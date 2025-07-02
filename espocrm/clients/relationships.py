@@ -100,6 +100,11 @@ class RelationshipClient:
         """
         self.client = main_client
         self.logger = get_logger(f"{__name__}.RelationshipClient")
+        
+        # Base client özelliklerini proxy et
+        self.base_url = getattr(main_client, 'base_url', None)
+        self.api_version = getattr(main_client, 'api_version', None)
+        self.entities = getattr(main_client, 'entities', None)
     
     @timing_decorator
     def list_related(
@@ -961,8 +966,13 @@ class RelationshipClient:
             return self.unlink_all("Contact", contact_id, "teams", **kwargs)
 
 
+# Backward compatibility alias
+RelationshipsClient = RelationshipClient
+
+
 # Export edilecek sınıflar
 __all__ = [
     "RelationshipClient",
+    "RelationshipsClient",
     "RelationshipOperationResult",
 ]

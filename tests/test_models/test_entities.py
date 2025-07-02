@@ -559,12 +559,12 @@ class TestEntityCollection:
         collection = EntityCollection(entities)
         
         # Sort by name
-        sorted_by_name = collection.sort(key=lambda e: e.get("name"))
+        sorted_by_name = collection.sort_entities(key=lambda e: e.get("name"))
         names = [e.get("name") for e in sorted_by_name]
         assert names == ["Alpha Inc", "Beta LLC", "Zebra Corp"]
         
         # Sort by creation date
-        sorted_by_date = collection.sort(key=lambda e: e.get("createdAt"))
+        sorted_by_date = collection.sort_entities(key=lambda e: e.get("createdAt"))
         dates = [e.get("createdAt") for e in sorted_by_date]
         assert dates == ["2024-01-01", "2024-01-02", "2024-01-03"]
     

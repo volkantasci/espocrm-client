@@ -129,6 +129,11 @@ class AttachmentClient:
         self.client = main_client
         self.logger = get_logger(f"{__name__}.AttachmentClient")
         
+        # Base client özelliklerini proxy et
+        self.base_url = getattr(main_client, 'base_url', None)
+        self.api_version = getattr(main_client, 'api_version', None)
+        self.entities = getattr(main_client, 'entities', None)
+        
         # Default validation config
         self.validation_config = FileValidationConfig()
         
@@ -358,7 +363,7 @@ class AttachmentClient:
             "Uploading from bytes",
             filename=filename,
             size=len(file_data),
-            field_type=field_type.value
+            field_type=field_type.value if hasattr(field_type, 'value') else str(field_type)
         )
         
         try:
@@ -373,13 +378,27 @@ class AttachmentClient:
             if field_type == AttachmentFieldType.FILE:
                 if not related_type:
                     raise EspoCRMValidationError("File field için related_type gereklidir")
-                upload_request.related_type = related_type
-                upload_request.field = field
+                # Yeni request oluştur FILE field için
+                upload_request = AttachmentUploadRequest(
+                    name=upload_request.name,
+                    type=upload_request.type,
+                    role=upload_request.role,
+                    file=upload_request.file,
+                    relatedType=related_type,
+                    field=field
+                )
             else:
                 if not parent_type:
                     raise EspoCRMValidationError("Attachment-Multiple field için parent_type gereklidir")
-                upload_request.parent_type = parent_type
-                upload_request.field = "attachments"
+                # Yeni request oluştur ATTACHMENTS field için
+                upload_request = AttachmentUploadRequest(
+                    name=upload_request.name,
+                    type=upload_request.type,
+                    role=upload_request.role,
+                    file=upload_request.file,
+                    parentType=parent_type,
+                    field="attachments"
+                )
             
             # Validation
             if validate:
@@ -464,8 +483,17 @@ class AttachmentClient:
         
         try:
             # Önce attachment bilgilerini al
+            self.logger.info(
+                "Getting attachment info",
+                attachment_id=attachment_id
+            )
             attachment_info = self.get_attachment(attachment_id, **kwargs)
             attachment = attachment_info.get_entity(Attachment)
+            
+            self.logger.info(
+                "Attachment info retrieved successfully",
+                attachment_id=attachment_id
+            )
             
             # Download URL oluştur
             download_endpoint = f"Attachment/file/{attachment_id}"
@@ -478,15 +506,17 @@ class AttachmentClient:
             # Dosyayı indir
             response = self.client.http_client.get(download_endpoint, stream=True)
             
-            # Save path belirle
+            # Save path belirle - attachment name'i sanitize et
+            safe_filename = self._sanitize_filename(attachment.name)
+            
             if save_path:
                 save_path = Path(save_path)
                 if save_path.is_dir():
-                    final_path = save_path / attachment.name
+                    final_path = save_path / safe_filename
                 else:
                     final_path = save_path
             else:
-                final_path = Path(attachment.name)
+                final_path = Path(safe_filename)
             
             # Dosya mevcut mu kontrol et
             if final_path.exists() and not overwrite:
@@ -703,7 +733,7 @@ class AttachmentClient:
         
         try:
             # Query parameters
-            params = {
+            params: Dict[str, Any] = {
                 "offset": offset,
                 "maxSize": max_size
             }
@@ -981,6 +1011,38 @@ class AttachmentClient:
         )
         
         return bulk_result
+    
+    def _sanitize_filename(self, filename: str) -> str:
+        """Dosya adını güvenli hale getirir.
+        
+        Args:
+            filename: Orijinal dosya adı
+            
+        Returns:
+            Güvenli dosya adı
+        """
+        import re
+        
+        # Tehlikeli karakterleri kaldır
+        safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename)
+        
+        # Boşlukları alt çizgi ile değiştir
+        safe_name = re.sub(r'\s+', '_', safe_name)
+        
+        # Başında ve sonunda nokta/boşluk varsa kaldır
+        safe_name = safe_name.strip('. ')
+        
+        # Boş ise default ad ver
+        if not safe_name:
+            safe_name = "attachment"
+        
+        # Çok uzunsa kısalt
+        if len(safe_name) > 255:
+            name_part, ext_part = os.path.splitext(safe_name)
+            max_name_len = 255 - len(ext_part)
+            safe_name = name_part[:max_name_len] + ext_part
+        
+        return safe_name
     
     def validate_file_security(self, file_data: bytes, filename: str) -> bool:
         """Dosya güvenlik kontrolü yapar.

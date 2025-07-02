@@ -86,6 +86,10 @@ class CrudClient:
             has_data=bool(data)
         )
         
+        # Entity type validation
+        if not entity_type or not entity_type.strip():
+            raise EspoCRMValidationError("Entity türü boş olamaz")
+        
         # Data'yı normalize et
         if isinstance(data, EntityRecord):
             request_data = data.to_api_dict()
@@ -304,13 +308,23 @@ class CrudClient:
             endpoint = f"{entity_type}/{entity_id}"
             response_data = self.client.delete(endpoint, **kwargs)
             
-            # EspoCRM delete genellikle boş response döndürür
-            success = True
+            # EspoCRM delete response'unu kontrol et
+            # Başarılı delete genellikle True döndürür veya boş response
+            if response_data is True or response_data is None or response_data == {}:
+                success = True
+            elif isinstance(response_data, dict) and response_data.get("success") is True:
+                success = True
+            elif isinstance(response_data, bool):
+                success = response_data
+            else:
+                # Beklenmeyen response format
+                success = True  # Default olarak başarılı kabul et
             
             self.logger.info(
                 "Entity deleted successfully",
                 entity_type=entity_type,
-                entity_id=entity_id
+                entity_id=entity_id,
+                response_data=response_data
             )
             
             return success
@@ -392,7 +406,7 @@ class CrudClient:
                 if select:
                     params["select"] = ",".join(select)
                 if where:
-                    params["where"] = json.dumps(where)
+                    params["where"] = where
             
             # API request
             response_data = self.client.get(entity_type, params=params, **kwargs)
@@ -719,7 +733,7 @@ class CrudClient:
             Entity sayısı
         """
         # Sadece count için minimal bir liste çek
-        search_params = SearchParams(max_size=1, offset=0)
+        search_params = SearchParams(maxSize=1, offset=0)
         if where:
             search_params.where = where
         

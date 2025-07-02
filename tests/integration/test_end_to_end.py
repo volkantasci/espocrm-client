@@ -12,11 +12,11 @@ import responses
 from datetime import datetime, timedelta
 
 from espocrm.client import EspoCRMClient
-from espocrm.config import EspoCRMConfig
+from espocrm.config import ClientConfig
 from espocrm.auth import create_api_key_auth, create_hmac_auth, create_basic_auth
-from espocrm.models.entities import Entity
+from espocrm.models.entities import EntityRecord
 from espocrm.models.search import SearchParams, WhereClause
-from espocrm.exceptions import EspoCRMError, EntityNotFoundError
+from espocrm.exceptions import EspoCRMError, EspoCRMNotFoundError
 
 
 @pytest.mark.integration
@@ -28,7 +28,7 @@ class TestEndToEndWorkflows:
     def test_complete_account_lifecycle(self, mock_http_responses):
         """Complete account lifecycle testi."""
         # Setup client
-        config = EspoCRMConfig(
+        config = ClientConfig(
             base_url="https://test.espocrm.com",
             api_version="v1"
         )
@@ -48,7 +48,7 @@ class TestEndToEndWorkflows:
         created_account = client.crud.create("Account", account_data)
         
         # Assertions for creation
-        assert isinstance(created_account, Entity)
+        assert isinstance(created_account, EntityRecord)
         assert created_account.entity_type == "Account"
         assert created_account.get("name") == "Integration Test Company"
         assert created_account.id is not None
@@ -88,7 +88,7 @@ class TestEndToEndWorkflows:
         created_contact = client.crud.create("Contact", contact_data)
         
         # Assertions for contact creation
-        assert isinstance(created_contact, Entity)
+        assert isinstance(created_contact, EntityRecord)
         assert created_contact.get("firstName") == "John"
         assert created_contact.get("accountId") == account_id
         
@@ -157,14 +157,14 @@ class TestEndToEndWorkflows:
         assert account_delete_result is True
         
         # 14. Verify deletion
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(EspoCRMNotFoundError):
             client.crud.read("Account", account_id)
     
     @responses.activate
     def test_bulk_operations_workflow(self, mock_http_responses):
         """Bulk operations workflow testi."""
         # Setup client
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
@@ -181,7 +181,7 @@ class TestEndToEndWorkflows:
         
         # Assertions for bulk creation
         assert len(created_accounts) == 5
-        assert all(isinstance(acc, Entity) for acc in created_accounts)
+        assert all(isinstance(acc, EntityRecord) for acc in created_accounts)
         assert all(acc.get("type") == "Customer" for acc in created_accounts)
         
         # 2. Bulk create Contacts for each Account
@@ -236,7 +236,7 @@ class TestEndToEndWorkflows:
     def test_complex_relationship_workflow(self, mock_http_responses):
         """Complex relationship workflow testi."""
         # Setup client
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
@@ -310,7 +310,7 @@ class TestEndToEndWorkflows:
     def test_metadata_driven_workflow(self, mock_http_responses):
         """Metadata-driven workflow testi."""
         # Setup client
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
@@ -336,7 +336,7 @@ class TestEndToEndWorkflows:
         minimal_data = {field: f"Test {field}" for field in required_fields}
         
         created_entity = client.crud.create("Account", minimal_data)
-        assert isinstance(created_entity, Entity)
+        assert isinstance(created_entity, EntityRecord)
         
         # 5. Validate data against metadata
         test_data = {
@@ -364,12 +364,12 @@ class TestEndToEndWorkflows:
     def test_error_handling_workflow(self, mock_http_responses):
         """Error handling workflow testi."""
         # Setup client
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
         # 1. Test entity not found
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(EspoCRMNotFoundError):
             client.crud.read("Account", "nonexistent_id")
         
         # 2. Test validation error
@@ -383,7 +383,7 @@ class TestEndToEndWorkflows:
         # 4. Test recovery after error
         # Create valid entity after error
         valid_account = client.crud.create("Account", {"name": "Recovery Test"})
-        assert isinstance(valid_account, Entity)
+        assert isinstance(valid_account, EntityRecord)
         
         # 5. Cleanup
         client.crud.delete("Account", valid_account.id)
@@ -398,7 +398,7 @@ class TestPerformanceIntegration:
     def test_high_volume_operations(self, mock_http_responses, performance_timer):
         """High volume operations testi."""
         # Setup client
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
@@ -439,7 +439,7 @@ class TestPerformanceIntegration:
         import queue
         
         # Setup client
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
@@ -505,7 +505,7 @@ class TestSecurityIntegration:
     @responses.activate
     def test_authentication_workflow(self, mock_http_responses):
         """Authentication workflow testi."""
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         
         # Test different auth methods
         auth_methods = [
@@ -519,7 +519,7 @@ class TestSecurityIntegration:
             
             # Test authenticated request
             entity = client.crud.create("Account", {"name": "Auth Test"})
-            assert isinstance(entity, Entity)
+            assert isinstance(entity, EntityRecord)
             
             # Cleanup
             client.crud.delete("Account", entity.id)
@@ -551,7 +551,7 @@ class TestSecurityIntegration:
     @responses.activate
     def test_rate_limiting_workflow(self, mock_http_responses):
         """Rate limiting workflow testi."""
-        config = EspoCRMConfig(
+        config = ClientConfig(
             base_url="https://test.espocrm.com",
             rate_limit=5,  # 5 requests per window
             rate_limit_window=1  # 1 second window
@@ -562,7 +562,7 @@ class TestSecurityIntegration:
         # Make requests up to limit
         for i in range(5):
             entity = client.crud.create("Account", {"name": f"Rate Test {i}"})
-            assert isinstance(entity, Entity)
+            assert isinstance(entity, EntityRecord)
         
         # Next request should be rate limited
         with pytest.raises(EspoCRMError):
@@ -577,7 +577,7 @@ class TestLongRunningWorkflows:
     @responses.activate
     def test_session_persistence(self, mock_http_responses):
         """Session persistence testi."""
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         
@@ -607,7 +607,7 @@ class TestLongRunningWorkflows:
     @responses.activate
     def test_cache_behavior_over_time(self, mock_http_responses):
         """Cache behavior over time testi."""
-        config = EspoCRMConfig(base_url="https://test.espocrm.com")
+        config = ClientConfig(base_url="https://test.espocrm.com")
         auth = create_api_key_auth("test_api_key_123")
         client = EspoCRMClient(config=config, auth=auth)
         

@@ -372,21 +372,17 @@ def retry_on_exception(
                     
                     if attempt < max_retries:
                         logger.warning(
-                            f"Function {func.__name__} failed, retrying in {current_delay}s",
-                            attempt=attempt + 1,
-                            max_attempts=max_retries + 1,
-                            error=str(e)
+                            f"Function {func.__name__} failed (attempt {attempt + 1}/{max_retries + 1}), retrying in {current_delay}s: {str(e)}"
                         )
                         time.sleep(current_delay)
                         current_delay *= backoff_factor
                     else:
                         logger.error(
-                            f"Function {func.__name__} failed after all retries",
-                            attempts=max_retries + 1,
-                            error=str(e)
+                            f"Function {func.__name__} failed after {max_retries + 1} attempts: {str(e)}"
                         )
             
-            raise last_exception
+            if last_exception:
+                raise last_exception
         
         return wrapper
     return decorator
@@ -414,16 +410,13 @@ def timing_decorator(func: Callable) -> Callable:
             result = func(*args, **kwargs)
             execution_time = (time.time() - start_time) * 1000  # milliseconds
             logger.debug(
-                f"Function {func.__name__} executed",
-                execution_time_ms=round(execution_time, 2)
+                f"Function {func.__name__} executed in {round(execution_time, 2)}ms"
             )
             return result
         except Exception as e:
             execution_time = (time.time() - start_time) * 1000  # milliseconds
             logger.error(
-                f"Function {func.__name__} failed",
-                execution_time_ms=round(execution_time, 2),
-                error=str(e)
+                f"Function {func.__name__} failed in {round(execution_time, 2)}ms: {str(e)}"
             )
             raise
     

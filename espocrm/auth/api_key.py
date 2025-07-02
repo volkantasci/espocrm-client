@@ -5,7 +5,7 @@ EspoCRM API Key authentication yöntemini implement eder.
 API Key, X-Api-Key header'ı ile gönderilir.
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 
 from .base import AuthenticationBase, AuthenticationError
@@ -25,7 +25,7 @@ class ApiKeyAuthentication(AuthenticationBase):
         headers = auth.get_headers()
     """
     
-    def __init__(self, api_key: str, **kwargs: Any) -> None:
+    def __init__(self, api_key: Optional[str], **kwargs: Any) -> None:
         """
         API Key authentication'ını başlatır.
         
@@ -38,11 +38,53 @@ class ApiKeyAuthentication(AuthenticationBase):
         """
         if not api_key or not isinstance(api_key, str):
             raise AuthenticationError(
-                "API key must be a non-empty string", 
+                "API key must be a non-empty string",
                 auth_type="ApiKey"
             )
         
+        # API key validation
+        self._validate_api_key(api_key)
+        
         super().__init__(api_key=api_key, **kwargs)
+    
+    def _validate_api_key(self, api_key: str) -> None:
+        """
+        API key'in güvenlik gereksinimlerini kontrol eder.
+        
+        Args:
+            api_key: Kontrol edilecek API key
+            
+        Raises:
+            AuthenticationError: API key güvenlik gereksinimlerini karşılamazsa
+        """
+        # Minimum uzunluk kontrolü (EspoCRM genellikle 16+ karakter kullanır)
+        if len(api_key.strip()) < 8:
+            raise AuthenticationError(
+                "API key must be at least 8 characters long",
+                auth_type="ApiKey"
+            )
+        
+        # Maksimum uzunluk kontrolü
+        if len(api_key.strip()) > 255:
+            raise AuthenticationError(
+                "API key must be less than 255 characters",
+                auth_type="ApiKey"
+            )
+        
+        # Karakter format kontrolü - sadece alfanumerik ve bazı özel karakterler
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_\.]+$', api_key.strip()):
+            raise AuthenticationError(
+                "API key contains invalid characters. Only alphanumeric, dash, underscore and dot are allowed",
+                auth_type="ApiKey"
+            )
+        
+        # Boşluk karakteri kontrolü
+        if ' ' in api_key or '\t' in api_key or '\n' in api_key:
+            raise AuthenticationError(
+                "API key cannot contain whitespace characters",
+                auth_type="ApiKey"
+            )
     
     def _setup_credentials(self, **kwargs: Any) -> None:
         """

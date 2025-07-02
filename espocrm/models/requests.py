@@ -438,7 +438,7 @@ class RelationshipListRequest(RelationshipRequest):
             if self.select:
                 params["select"] = ",".join(self.select)
             if self.where:
-                params["where"] = json.dumps(self.where)
+                params["where"] = self.where
         
         return params
 
@@ -475,9 +475,9 @@ def create_link_request(
         link=link,
         id=target_id,
         ids=target_ids,
-        mass_relate=mass_relate if mass_relate else None,
+        massRelate=mass_relate if mass_relate else None,
         where=where,
-        foreign_id=foreign_id
+        foreignId=foreign_id
     )
 
 
@@ -508,7 +508,7 @@ def create_unlink_request(
         link=link,
         id=target_id,
         ids=target_ids,
-        foreign_id=foreign_id
+        foreignId=foreign_id
     )
 
 
@@ -547,8 +547,8 @@ def create_relationship_list_request(
         link=link,
         search_params=search_params,
         offset=offset,
-        max_size=max_size,
-        order_by=order_by,
+        maxSize=max_size,
+        orderBy=order_by,
         order=order,
         select=select,
         where=where

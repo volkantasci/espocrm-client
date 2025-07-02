@@ -14,7 +14,7 @@ import responses
 import requests
 
 from espocrm.client import EspoCRMClient
-from espocrm.config import EspoCRMConfig
+from espocrm.config import ClientConfig
 from espocrm.auth import (
     ApiKeyAuthentication,
     HMACAuthentication,
@@ -23,11 +23,10 @@ from espocrm.auth import (
     create_hmac_auth,
     create_basic_auth
 )
-from espocrm.models.entities import Entity
+from espocrm.models.entities import EntityRecord
 from espocrm.models.responses import (
     ListResponse,
     EntityResponse,
-    DeleteResponse,
     StreamResponse
 )
 from espocrm.models.metadata import (
@@ -43,18 +42,17 @@ from espocrm.models.metadata import (
 # Test Configuration
 TEST_CONFIG = {
     "base_url": "https://test.espocrm.com",
-    "api_version": "v1",
     "timeout": 30,
     "max_retries": 3,
     "retry_delay": 1.0,
-    "rate_limit": 100,
-    "rate_limit_window": 60
+    "rate_limit_per_minute": 100,
+    "api_key": "test_api_key_123"
 }
 
 # Mock Data Templates
 MOCK_ENTITIES = {
     "Account": {
-        "id": "account_123",
+        "id": "675a1b2c3d4e5f6a7",  # 17 characters
         "name": "Test Company",
         "type": "Customer",
         "industry": "Technology",
@@ -69,27 +67,27 @@ MOCK_ENTITIES = {
         "description": "Test company description",
         "createdAt": "2024-01-01T10:00:00+00:00",
         "modifiedAt": "2024-01-01T10:00:00+00:00",
-        "createdById": "user_123",
-        "modifiedById": "user_123"
+        "createdById": "675a1b2c3d4e5f6a8",  # 17 characters
+        "modifiedById": "675a1b2c3d4e5f6a8"  # 17 characters
     },
     "Contact": {
-        "id": "contact_123",
+        "id": "675a1b2c3d4e5f6a9",  # 17 characters
         "firstName": "John",
         "lastName": "Doe",
         "name": "John Doe",
         "emailAddress": "john.doe@test.com",
         "phoneNumber": "+1-555-0124",
         "title": "Software Engineer",
-        "accountId": "account_123",
+        "accountId": "675a1b2c3d4e5f6a7",  # 17 characters
         "accountName": "Test Company",
         "description": "Test contact description",
         "createdAt": "2024-01-01T11:00:00+00:00",
         "modifiedAt": "2024-01-01T11:00:00+00:00",
-        "createdById": "user_123",
-        "modifiedById": "user_123"
+        "createdById": "675a1b2c3d4e5f6a8",  # 17 characters
+        "modifiedById": "675a1b2c3d4e5f6a8"  # 17 characters
     },
     "Lead": {
-        "id": "lead_123",
+        "id": "675a1b2c3d4e5f6b0",  # 17 characters
         "firstName": "Jane",
         "lastName": "Smith",
         "name": "Jane Smith",
@@ -102,23 +100,23 @@ MOCK_ENTITIES = {
         "description": "Potential customer from website",
         "createdAt": "2024-01-01T12:00:00+00:00",
         "modifiedAt": "2024-01-01T12:00:00+00:00",
-        "createdById": "user_123",
-        "modifiedById": "user_123"
+        "createdById": "675a1b2c3d4e5f6a8",  # 17 characters
+        "modifiedById": "675a1b2c3d4e5f6a8"  # 17 characters
     },
     "Opportunity": {
-        "id": "opportunity_123",
+        "id": "675a1b2c3d4e5f6b1",  # 17 characters
         "name": "Big Deal",
         "stage": "Prospecting",
         "amount": 50000.00,
         "probability": 25,
         "closeDate": "2024-06-01",
-        "accountId": "account_123",
+        "accountId": "675a1b2c3d4e5f6a7",  # 17 characters
         "accountName": "Test Company",
         "description": "Large opportunity with existing customer",
         "createdAt": "2024-01-01T13:00:00+00:00",
         "modifiedAt": "2024-01-01T13:00:00+00:00",
-        "createdById": "user_123",
-        "modifiedById": "user_123"
+        "createdById": "675a1b2c3d4e5f6a8",  # 17 characters
+        "modifiedById": "675a1b2c3d4e5f6a8"  # 17 characters
     }
 }
 
@@ -244,7 +242,7 @@ class MockEspoCRMServer:
         """Update existing entity."""
         entity = self.get_entity(entity_type, entity_id)
         if not entity:
-            return None
+            return {}
         
         entity.update(data)
         entity["modifiedAt"] = datetime.utcnow().isoformat() + "+00:00"
@@ -277,7 +275,7 @@ def mock_server():
 @pytest.fixture
 def test_config():
     """Test configuration fixture."""
-    return EspoCRMConfig(**TEST_CONFIG)
+    return ClientConfig(**TEST_CONFIG)
 
 
 @pytest.fixture
@@ -305,38 +303,39 @@ def mock_client(test_config, api_key_auth):
     client.config = test_config
     client.auth = api_key_auth
     client.base_url = test_config.base_url
-    client.api_version = test_config.api_version
+    client.api_version = "v1"  # API version attribute'u ekle
+    client.logger = Mock()  # Logger attribute'u ekle
     return client
 
 
 @pytest.fixture
 def real_client(test_config, api_key_auth):
     """Real EspoCRM client fixture for integration tests."""
-    return EspoCRMClient(config=test_config, auth=api_key_auth)
+    return EspoCRMClient(base_url=test_config.base_url, config=test_config, auth=api_key_auth)
 
 
 @pytest.fixture
 def sample_account():
     """Sample account entity fixture."""
-    return Entity("Account", MOCK_ENTITIES["Account"].copy())
+    return EntityRecord.create_from_dict(MOCK_ENTITIES["Account"].copy(), "Account")
 
 
 @pytest.fixture
 def sample_contact():
     """Sample contact entity fixture."""
-    return Entity("Contact", MOCK_ENTITIES["Contact"].copy())
+    return EntityRecord.create_from_dict(MOCK_ENTITIES["Contact"].copy(), "Contact")
 
 
 @pytest.fixture
 def sample_lead():
     """Sample lead entity fixture."""
-    return Entity("Lead", MOCK_ENTITIES["Lead"].copy())
+    return EntityRecord.create_from_dict(MOCK_ENTITIES["Lead"].copy(), "Lead")
 
 
 @pytest.fixture
 def sample_opportunity():
     """Sample opportunity entity fixture."""
-    return Entity("Opportunity", MOCK_ENTITIES["Opportunity"].copy())
+    return EntityRecord.create_from_dict(MOCK_ENTITIES["Opportunity"].copy(), "Opportunity")
 
 
 @pytest.fixture
@@ -354,10 +353,10 @@ def sample_entities(sample_account, sample_contact, sample_lead, sample_opportun
 def mock_metadata():
     """Mock metadata fixture."""
     return ApplicationMetadata(
-        entity_defs={
+        entityDefs={
             "Account": EntityMetadata(
                 fields={
-                    "name": FieldMetadata(type=FieldType.VARCHAR, required=True, max_length=255),
+                    "name": FieldMetadata(type=FieldType.VARCHAR, required=True, maxLength=255),
                     "type": FieldMetadata(type=FieldType.ENUM, options=["Customer", "Investor", "Partner"]),
                     "industry": FieldMetadata(type=FieldType.ENUM, options=["Technology", "Healthcare"]),
                     "website": FieldMetadata(type=FieldType.URL),
@@ -379,11 +378,11 @@ def mock_metadata():
             ),
             "Contact": EntityMetadata(
                 fields={
-                    "firstName": FieldMetadata(type=FieldType.VARCHAR, max_length=100),
-                    "lastName": FieldMetadata(type=FieldType.VARCHAR, required=True, max_length=100),
+                    "firstName": FieldMetadata(type=FieldType.VARCHAR, maxLength=100),
+                    "lastName": FieldMetadata(type=FieldType.VARCHAR, required=True, maxLength=100),
                     "emailAddress": FieldMetadata(type=FieldType.EMAIL),
                     "phoneNumber": FieldMetadata(type=FieldType.PHONE),
-                    "title": FieldMetadata(type=FieldType.VARCHAR, max_length=100)
+                    "title": FieldMetadata(type=FieldType.VARCHAR, maxLength=100)
                 },
                 links={
                     "account": RelationshipMetadata(
@@ -407,7 +406,7 @@ def responses_mock():
 def mock_http_responses(responses_mock, mock_server):
     """Setup mock HTTP responses."""
     base_url = TEST_CONFIG["base_url"]
-    api_version = TEST_CONFIG["api_version"]
+    api_version = "v1"  # Fixed API version
     
     # GET entity
     def get_entity_callback(request):
@@ -462,43 +461,410 @@ def mock_http_responses(responses_mock, mock_server):
         result = mock_server.list_entities(entity_type)
         return (200, {}, json.dumps(result))
     
-    # Setup URL patterns
-    responses_mock.add_callback(
-        responses.GET,
-        f"{base_url}/api/{api_version}/Account/account_123",
-        callback=get_entity_callback
-    )
-    
-    responses_mock.add_callback(
+    # Basit static mock'lar kullan
+    # POST /api/v1/Account (create)
+    responses_mock.add(
         responses.POST,
         f"{base_url}/api/{api_version}/Account",
-        callback=create_entity_callback
+        json={
+            "id": "account_1751483609360",
+            "name": "Integration Test Company",
+            "type": "Customer",
+            "industry": "Technology",
+            "createdAt": "2024-01-01T10:00:00+00:00",
+            "modifiedAt": "2024-01-01T10:00:00+00:00"
+        },
+        status=201
     )
     
-    responses_mock.add_callback(
+    # GET /api/v1/Account/{id} (read)
+    responses_mock.add(
+        responses.GET,
+        f"{base_url}/api/{api_version}/Account/account_1751483609360",
+        json={
+            "id": "account_1751483609360",
+            "name": "Integration Test Company",
+            "type": "Customer",
+            "industry": "Technology",
+            "createdAt": "2024-01-01T10:00:00+00:00",
+            "modifiedAt": "2024-01-01T10:00:00+00:00"
+        },
+        status=200
+    )
+    
+    # PUT /api/v1/Account/{id} (update)
+    responses_mock.add(
         responses.PUT,
-        f"{base_url}/api/{api_version}/Account/account_123",
-        callback=update_entity_callback
+        f"{base_url}/api/{api_version}/Account/account_1751483609360",
+        json={
+            "id": "account_1751483609360",
+            "name": "Integration Test Company",
+            "type": "Customer",
+            "industry": "Healthcare",  # Updated
+            "createdAt": "2024-01-01T10:00:00+00:00",
+            "modifiedAt": "2024-01-01T11:00:00+00:00"
+        },
+        status=200
     )
     
-    responses_mock.add_callback(
+    # PATCH /api/v1/Account/{id} (partial update)
+    responses_mock.add(
+        responses.PATCH,
+        f"{base_url}/api/{api_version}/Account/account_1751483609360",
+        json={
+            "id": "account_1751483609360",
+            "name": "Integration Test Company",
+            "type": "Customer",
+            "industry": "Healthcare",  # Updated
+            "createdAt": "2024-01-01T10:00:00+00:00",
+            "modifiedAt": "2024-01-01T11:00:00+00:00"
+        },
+        status=200
+    )
+    
+    # DELETE /api/v1/Account/{id} (delete)
+    responses_mock.add(
         responses.DELETE,
-        f"{base_url}/api/{api_version}/Account/account_123",
-        callback=delete_entity_callback
+        f"{base_url}/api/{api_version}/Account/account_1751483609360",
+        json={"deleted": True},
+        status=200
     )
     
-    responses_mock.add_callback(
+    # GET /api/v1/Account (list)
+    responses_mock.add(
         responses.GET,
         f"{base_url}/api/{api_version}/Account",
-        callback=list_entities_callback
+        json={
+            "total": 1,
+            "list": [{
+                "id": "account_1751483609360",
+                "name": "Integration Test Company",
+                "type": "Customer",
+                "industry": "Healthcare"
+            }]
+        },
+        status=200
     )
     
-    # Metadata endpoint
+    # GET /api/v1/Metadata
     responses_mock.add(
         responses.GET,
         f"{base_url}/api/{api_version}/Metadata",
         json=MOCK_METADATA,
         status=200
+    )
+    
+    # Stream endpoints
+    # GET /api/v1/Stream (user stream) - with query parameters
+    import re
+    responses_mock.add(
+        responses.GET,
+        re.compile(f"{base_url}/api/{api_version}/Stream.*"),
+        json={
+            "total": 2,
+            "list": [
+                {
+                    "id": "675a1b2c3d4e5f6a7",
+                    "type": "Post",
+                    "data": {"post": "User stream post"},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T10:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                },
+                {
+                    "id": "675a1b2c3d4e5f6b0",
+                    "type": "Update",
+                    "data": {"fields": {"name": "Updated Name"}},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T09:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6b1"
+                }
+            ]
+        },
+        status=200
+    )
+    
+    # GET /api/v1/Account/{id}/stream (entity stream) - with query parameters
+    responses_mock.add(
+        responses.GET,
+        re.compile(f"{base_url}/api/{api_version}/Account/675a1b2c3d4e5f6a8/stream.*"),
+        json={
+            "total": 1,
+            "list": [
+                {
+                    "id": "675a1b2c3d4e5f6a7",
+                    "type": "Post",
+                    "data": {"post": "Entity stream post"},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T10:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                }
+            ]
+        },
+        status=200
+    )
+    
+    # POST /api/v1/Note (create stream post)
+    responses_mock.add(
+        responses.POST,
+        f"{base_url}/api/{api_version}/Note",
+        json={
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "post": "Integration test post",
+            "data": {"post": "Integration test post"},
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        status=201
+    )
+    
+    # GET /api/v1/Note/{id} (get stream note)
+    responses_mock.add(
+        responses.GET,
+        f"{base_url}/api/{api_version}/Note/675a1b2c3d4e5f6c0",
+        json={
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "post": "Retrieved note",
+            "data": {"post": "Retrieved note"},
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        status=200
+    )
+    
+    # DELETE /api/v1/Note/{id} (delete stream note)
+    responses_mock.add(
+        responses.DELETE,
+        f"{base_url}/api/{api_version}/Note/675a1b2c3d4e5f6c0",
+        json={"success": True},
+        status=200
+    )
+    
+    # PUT /api/v1/Account/{id}/subscription (follow entity)
+    responses_mock.add(
+        responses.PUT,
+        f"{base_url}/api/{api_version}/Account/675a1b2c3d4e5f6a8/subscription",
+        json={"success": True},
+        status=200
+    )
+    
+    # DELETE /api/v1/Account/{id}/subscription (unfollow entity)
+    responses_mock.add(
+        responses.DELETE,
+        f"{base_url}/api/{api_version}/Account/675a1b2c3d4e5f6a8/subscription",
+        json={"success": True},
+        status=200
+    )
+    
+    # GET /api/v1/Account/{id}/subscription (check follow status)
+    responses_mock.add(
+        responses.GET,
+        f"{base_url}/api/{api_version}/Account/675a1b2c3d4e5f6a8/subscription",
+        json={"isFollowing": True},
+        status=200
+    )
+    
+    # Attachment endpoints
+    # POST /api/v1/Attachment (upload attachment) - Generic mock for all uploads
+    def attachment_upload_callback(request):
+        # Parse request to get filename and other details
+        import base64
+        try:
+            if hasattr(request, 'body') and request.body:
+                data = json.loads(request.body)
+                filename = data.get('name', 'uploaded_file.txt')
+                file_content = data.get('file', '')
+                mime_type = data.get('type', 'text/plain')
+                
+                # Calculate size from base64 content
+                try:
+                    decoded_content = base64.b64decode(file_content)
+                    size = len(decoded_content)
+                except:
+                    size = len(file_content)
+                
+                # Generate unique ID based on filename
+                if filename == "integration_test.txt":
+                    attachment_id = "675a1b2c3d4e5f6d0"
+                elif "unicode" in filename or "файл" in filename:
+                    attachment_id = "attachment_unicode"
+                elif filename == "README":
+                    attachment_id = "attachment_no_ext"
+                else:
+                    attachment_id = "mock_id"
+                
+                return (201, {}, json.dumps({
+                    "id": attachment_id,
+                    "name": filename,
+                    "type": mime_type,
+                    "size": size,
+                    "role": "Attachment",
+                    "createdAt": "2024-01-01T12:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                }))
+        except:
+            pass
+        
+        # Default response
+        return (201, {}, json.dumps({
+            "id": "mock_id",
+            "name": "uploaded_file.txt",
+            "type": "text/plain",
+            "size": 100,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        }))
+    
+    responses_mock.add_callback(
+        responses.POST,
+        f"{base_url}/api/{api_version}/Attachment",
+        callback=attachment_upload_callback
+    )
+    
+    # GET /api/v1/Attachment/{id} (get attachment info) - Multiple IDs
+    attachment_info_responses = {
+        "675a1b2c3d4e5f6d0": {
+            "id": "675a1b2c3d4e5f6d0",
+            "name": "integration_test.txt",
+            "type": "text/plain",
+            "size": 33,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "attachment_0": {
+            "id": "attachment_0",
+            "name": "Mock_Entity.txt",
+            "type": "text/plain",
+            "size": 18,  # "Downloaded content" = 18 bytes
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "attachment_1": {
+            "id": "attachment_1",
+            "name": "test_file_1.txt",
+            "type": "text/plain",
+            "size": 100,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "attachment_2": {
+            "id": "attachment_2",
+            "name": "test_file_2.txt",
+            "type": "text/plain",
+            "size": 100,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "attachment_123": {
+            "id": "attachment_123",
+            "name": "document.pdf",
+            "type": "application/pdf",
+            "size": 1024,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "mock_id": {
+            "id": "mock_id",
+            "name": "uploaded_file.txt",
+            "type": "text/plain",
+            "size": 100,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "attachment_unicode": {
+            "id": "attachment_unicode",
+            "name": "файл.txt",
+            "type": "text/plain",
+            "size": 12,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        },
+        "attachment_no_ext": {
+            "id": "attachment_no_ext",
+            "name": "README",
+            "type": "text/plain",
+            "size": 19,
+            "role": "Attachment",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        }
+    }
+    
+    def attachment_info_callback(request):
+        # Extract attachment ID from URL
+        path_parts = request.url.split('/')
+        attachment_id = path_parts[-1].split('?')[0]  # Remove query params
+        
+        if attachment_id in attachment_info_responses:
+            return (200, {}, json.dumps(attachment_info_responses[attachment_id]))
+        else:
+            return (404, {}, json.dumps({"error": "Attachment not found"}))
+    
+    responses_mock.add_callback(
+        responses.GET,
+        re.compile(f"{base_url}/api/{api_version}/Attachment/[^/]+$"),
+        callback=attachment_info_callback
+    )
+    
+    # GET /api/v1/Attachment/file/{id} (download attachment) - Multiple IDs
+    attachment_file_responses = {
+        "675a1b2c3d4e5f6d0": b"Test file content for integration",
+        "attachment_0": b"Downloaded content",  # 18 bytes exactly
+        "attachment_1": b"Test file 1 content",
+        "attachment_2": b"Test file 2 content",
+        "attachment_123": b"PDF content here",
+        "mock_id": b"Mock file content",
+        "attachment_unicode": b"Unicode content",
+        "attachment_no_ext": b"README file content"
+    }
+    
+    def attachment_download_callback(request):
+        # Extract attachment ID from URL
+        path_parts = request.url.split('/')
+        attachment_id = path_parts[-1].split('?')[0]  # Remove query params
+        
+        if attachment_id in attachment_file_responses:
+            content = attachment_file_responses[attachment_id]
+            return (200, {"Content-Type": "application/octet-stream"}, content)
+        else:
+            return (404, {}, b"File not found")
+    
+    responses_mock.add_callback(
+        responses.GET,
+        re.compile(f"{base_url}/api/{api_version}/Attachment/file/[^/]+$"),
+        callback=attachment_download_callback
+    )
+    
+    # DELETE /api/v1/Attachment/{id} (delete attachment) - Multiple IDs
+    def attachment_delete_callback(request):
+        # Extract attachment ID from URL
+        path_parts = request.url.split('/')
+        attachment_id = path_parts[-1].split('?')[0]  # Remove query params
+        
+        # Always return success for delete operations in tests
+        return (200, {}, json.dumps({"success": True}))
+    
+    responses_mock.add_callback(
+        responses.DELETE,
+        re.compile(f"{base_url}/api/{api_version}/Attachment/[^/]+$"),
+        callback=attachment_delete_callback
     )
     
     return responses_mock
@@ -645,7 +1011,7 @@ def security_test_data():
         ],
         "large_payloads": [
             "A" * 10000,  # Large string
-            {"key": "value"} * 1000,  # Large object
+            {f"key_{i}": f"value_{i}" for i in range(1000)},  # Large object
             list(range(10000))  # Large array
         ]
     }

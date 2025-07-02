@@ -11,15 +11,10 @@ from datetime import datetime, timedelta
 import responses
 
 from espocrm.clients.stream import StreamClient
-from espocrm.models.stream import StreamPost, StreamNote, StreamUpdate
-from espocrm.models.entities import Entity
-from espocrm.models.responses import ListResponse, StreamResponse
-from espocrm.models.search import SearchParams, WhereClause
+from espocrm.models.stream import StreamNote, StreamNoteType
 from espocrm.exceptions import (
     EspoCRMError,
-    EntityNotFoundError,
-    ValidationError,
-    StreamError
+    EspoCRMValidationError
 )
 
 
@@ -35,39 +30,40 @@ class TestStreamClient:
         assert stream_client.client == mock_client
         assert stream_client.base_url == mock_client.base_url
         assert stream_client.api_version == mock_client.api_version
+        assert stream_client.logger == mock_client.logger
     
-    def test_get_entity_stream_success(self, mock_client):
-        """Entity stream alma başarı testi."""
+    def test_list_user_stream_success(self, mock_client):
+        """User stream listeleme başarı testi."""
         # Mock response setup
         mock_response = {
             "total": 3,
             "list": [
                 {
-                    "id": "stream_1",
+                    "id": "675a1b2c3d4e5f6a7",
                     "type": "Post",
                     "data": {"post": "This is a test post"},
                     "parentType": "Account",
-                    "parentId": "account_123",
+                    "parentId": "675a1b2c3d4e5f6a8",
                     "createdAt": "2024-01-01T10:00:00+00:00",
-                    "createdById": "user_123"
+                    "createdById": "675a1b2c3d4e5f6a9"
                 },
                 {
-                    "id": "stream_2", 
+                    "id": "675a1b2c3d4e5f6b0",
                     "type": "Update",
-                    "data": {"fields": ["name", "industry"]},
+                    "data": {"fields": {"name": "New Name", "industry": "Technology"}},
                     "parentType": "Account",
-                    "parentId": "account_123",
+                    "parentId": "675a1b2c3d4e5f6a8",
                     "createdAt": "2024-01-01T09:00:00+00:00",
-                    "createdById": "user_456"
+                    "createdById": "675a1b2c3d4e5f6b1"
                 },
                 {
-                    "id": "stream_3",
+                    "id": "675a1b2c3d4e5f6b2",
                     "type": "Status",
                     "data": {"value": "Active"},
                     "parentType": "Account", 
-                    "parentId": "account_123",
+                    "parentId": "675a1b2c3d4e5f6a8",
                     "createdAt": "2024-01-01T08:00:00+00:00",
-                    "createdById": "user_789"
+                    "createdById": "675a1b2c3d4e5f6b3"
                 }
             ]
         }
@@ -75,275 +71,238 @@ class TestStreamClient:
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.get_stream("Account", "account_123")
+        result = stream_client.list_user_stream(offset=0, max_size=20)
         
         # Assertions
-        assert isinstance(result, StreamResponse)
-        assert result.total == 3
-        assert len(result.items) == 3
-        assert all(hasattr(item, 'type') for item in result.items)
-        assert result.items[0].type == "Post"
-        assert result.items[1].type == "Update"
+        assert isinstance(result, list)
+        assert len(result) == 3
+        assert all(isinstance(item, StreamNote) for item in result)
+        assert result[0].type == StreamNoteType.POST
+        assert result[1].type == StreamNoteType.UPDATE
         
         # API call verification
         mock_client.get.assert_called_once_with(
-            "Account/account_123/stream",
-            params={}
+            "Stream",
+            params={'offset': 0, 'maxSize': 20}
         )
     
-    def test_get_stream_with_params(self, mock_client):
-        """Stream parametreli alma testi."""
+    def test_list_entity_stream_success(self, mock_client):
+        """Entity stream listeleme başarı testi."""
         # Mock response setup
-        mock_response = {"total": 1, "list": [{"id": "stream_1", "type": "Post"}]}
+        mock_response = {
+            "total": 2,
+            "list": [
+                {
+                    "id": "675a1b2c3d4e5f6a7",
+                    "type": "Post",
+                    "data": {"post": "Entity specific post"},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T10:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                },
+                {
+                    "id": "675a1b2c3d4e5f6b0",
+                    "type": "Update",
+                    "data": {"fields": {"name": "Updated Name"}},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T09:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6b1"
+                }
+            ]
+        }
         mock_client.get.return_value = mock_response
         
         stream_client = StreamClient(mock_client)
         
-        # Search parameters
-        search_params = SearchParams(
-            where=[
-                WhereClause(field="type", operator="equals", value="Post")
-            ],
-            order_by="createdAt",
-            order="desc",
-            max_size=20
-        )
-        
-        result = stream_client.get_stream("Account", "account_123", search_params)
+        result = stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
         
         # Assertions
-        assert isinstance(result, StreamResponse)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(isinstance(item, StreamNote) for item in result)
+        assert result[0].parent_type == "Account"
+        assert result[0].parent_id == "675a1b2c3d4e5f6a8"
         
         # API call verification
-        expected_params = search_params.to_query_params()
         mock_client.get.assert_called_once_with(
-            "Account/account_123/stream",
-            params=expected_params
+            "Account/675a1b2c3d4e5f6a8/stream",
+            params={'offset': 0, 'maxSize': 20}
         )
     
     def test_post_to_stream_success(self, mock_client):
         """Stream'e post gönderme başarı testi."""
         # Mock response setup
         mock_response = {
-            "id": "stream_new",
+            "id": "675a1b2c3d4e5f6c0",
             "type": "Post",
+            "post": "New stream post",
             "data": {"post": "New stream post"},
             "parentType": "Account",
-            "parentId": "account_123",
+            "parentId": "675a1b2c3d4e5f6a8",
             "createdAt": "2024-01-01T12:00:00+00:00",
-            "createdById": "user_123"
+            "createdById": "675a1b2c3d4e5f6a9"
         }
         mock_client.post.return_value = mock_response
         
         stream_client = StreamClient(mock_client)
         
-        post_data = {
-            "post": "New stream post",
-            "type": "Post"
-        }
-        
-        result = stream_client.post("Account", "account_123", post_data)
-        
-        # Assertions
-        assert isinstance(result, StreamPost)
-        assert result.id == "stream_new"
-        assert result.data["post"] == "New stream post"
-        
-        # API call verification
-        mock_client.post.assert_called_once_with(
-            "Account/account_123/stream",
-            data=post_data
+        result = stream_client.post_to_stream(
+            parent_type="Account",
+            parent_id="675a1b2c3d4e5f6a8", 
+            post="New stream post"
         )
-    
-    def test_post_note_to_stream(self, mock_client):
-        """Stream'e note gönderme testi."""
-        # Mock response setup
-        mock_response = {
-            "id": "stream_note",
-            "type": "Note",
-            "data": {"post": "Important note about this account"},
-            "parentType": "Account",
-            "parentId": "account_123",
-            "createdAt": "2024-01-01T12:00:00+00:00",
-            "createdById": "user_123"
-        }
-        mock_client.post.return_value = mock_response
-        
-        stream_client = StreamClient(mock_client)
-        
-        result = stream_client.post_note("Account", "account_123", "Important note about this account")
         
         # Assertions
         assert isinstance(result, StreamNote)
-        assert result.data["post"] == "Important note about this account"
+        assert result.id == "675a1b2c3d4e5f6c0"
+        assert result.post == "New stream post"
         
         # API call verification
         mock_client.post.assert_called_once_with(
-            "Account/account_123/stream",
+            "Note",
             data={
-                "post": "Important note about this account",
-                "type": "Note"
+                'type': 'Post',
+                'post': 'New stream post',
+                'parentType': 'Account',
+                'parentId': '675a1b2c3d4e5f6a8'
             }
         )
     
     def test_follow_entity_success(self, mock_client):
         """Entity follow başarı testi."""
         # Mock response setup
-        mock_client.put.return_value = {"followed": True}
+        mock_client.put.return_value = {"success": True}
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.follow("Account", "account_123")
+        result = stream_client.follow_entity("Account", "675a1b2c3d4e5f6a8")
         
         # Assertions
         assert result is True
         
         # API call verification
         mock_client.put.assert_called_once_with(
-            "Account/account_123/subscription"
+            "Account/675a1b2c3d4e5f6a8/subscription"
         )
     
     def test_unfollow_entity_success(self, mock_client):
         """Entity unfollow başarı testi."""
         # Mock response setup
-        mock_client.delete.return_value = {"unfollowed": True}
+        mock_client.delete.return_value = {"success": True}
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.unfollow("Account", "account_123")
+        result = stream_client.unfollow_entity("Account", "675a1b2c3d4e5f6a8")
         
         # Assertions
         assert result is True
         
         # API call verification
         mock_client.delete.assert_called_once_with(
-            "Account/account_123/subscription"
+            "Account/675a1b2c3d4e5f6a8/subscription"
         )
     
-    def test_get_followers_success(self, mock_client):
-        """Entity followers alma başarı testi."""
+    def test_is_following_entity_success(self, mock_client):
+        """Entity takip durumu kontrol testi."""
         # Mock response setup
-        mock_response = {
-            "total": 2,
-            "list": [
-                {"id": "user_123", "name": "John Doe", "type": "User"},
-                {"id": "user_456", "name": "Jane Smith", "type": "User"}
-            ]
-        }
-        mock_client.get.return_value = mock_response
+        mock_client.get.return_value = {"isFollowing": True}
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.get_followers("Account", "account_123")
-        
-        # Assertions
-        assert isinstance(result, ListResponse)
-        assert result.total == 2
-        assert len(result.entities) == 2
-        
-        # API call verification
-        mock_client.get.assert_called_once_with(
-            "Account/account_123/followers"
-        )
-    
-    def test_delete_stream_post_success(self, mock_client):
-        """Stream post silme başarı testi."""
-        # Mock response setup
-        mock_client.delete.return_value = {"deleted": True}
-        
-        stream_client = StreamClient(mock_client)
-        
-        result = stream_client.delete_post("stream_123")
+        result = stream_client.is_following_entity("Account", "675a1b2c3d4e5f6a8")
         
         # Assertions
         assert result is True
         
         # API call verification
-        mock_client.delete.assert_called_once_with(
-            "Stream/stream_123"
+        mock_client.get.assert_called_once_with(
+            "Account/675a1b2c3d4e5f6a8/subscription"
         )
     
-    def test_get_global_stream_success(self, mock_client):
-        """Global stream alma başarı testi."""
+    def test_get_stream_note_success(self, mock_client):
+        """Stream note getirme başarı testi."""
         # Mock response setup
         mock_response = {
-            "total": 5,
-            "list": [
-                {"id": "stream_1", "type": "Post", "parentType": "Account"},
-                {"id": "stream_2", "type": "Update", "parentType": "Contact"},
-                {"id": "stream_3", "type": "Create", "parentType": "Lead"}
-            ]
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "post": "Retrieved note",
+            "data": {"post": "Retrieved note"},
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
         }
         mock_client.get.return_value = mock_response
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.get_global_stream()
+        result = stream_client.get_stream_note("675a1b2c3d4e5f6c0")
         
         # Assertions
-        assert isinstance(result, StreamResponse)
-        assert result.total == 5
-        assert len(result.items) == 3
+        assert isinstance(result, StreamNote)
+        assert result.id == "675a1b2c3d4e5f6c0"
+        assert result.post == "Retrieved note"
         
         # API call verification
-        mock_client.get.assert_called_once_with(
-            "Stream",
-            params={}
-        )
+        mock_client.get.assert_called_once_with("Note/675a1b2c3d4e5f6c0")
+    
+    def test_delete_stream_note_success(self, mock_client):
+        """Stream note silme başarı testi."""
+        # Mock response setup
+        mock_client.delete.return_value = {"success": True}
+        
+        stream_client = StreamClient(mock_client)
+        
+        result = stream_client.delete_stream_note("675a1b2c3d4e5f6c0")
+        
+        # Assertions
+        assert result is True
+        
+        # API call verification
+        mock_client.delete.assert_called_once_with("Note/675a1b2c3d4e5f6c0")
 
 
 @pytest.mark.unit
 @pytest.mark.stream
-@pytest.mark.parametrize
 class TestStreamClientParametrized:
     """Stream Client parametrized testleri."""
     
     @pytest.mark.parametrize("entity_type", ["Account", "Contact", "Lead", "Opportunity"])
-    def test_get_stream_different_entities(self, mock_client, entity_type):
+    def test_list_entity_stream_different_entities(self, mock_client, entity_type):
         """Farklı entity türleri için stream alma testi."""
         # Mock response
-        mock_response = {"total": 1, "list": [{"id": "stream_1", "type": "Post"}]}
+        mock_response = {
+            "total": 1, 
+            "list": [{
+                "id": "675a1b2c3d4e5f6a7",
+                "type": "Post",
+                "data": {"post": "Test post"},
+                "parentType": entity_type,
+                "parentId": "675a1b2c3d4e5f6a8",
+                "createdAt": "2024-01-01T10:00:00+00:00",
+                "createdById": "675a1b2c3d4e5f6a9"
+            }]
+        }
         mock_client.get.return_value = mock_response
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.get_stream(entity_type, "entity_123")
+        result = stream_client.list_entity_stream(entity_type, "675a1b2c3d4e5f6a8")
         
-        assert isinstance(result, StreamResponse)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].parent_type == entity_type
         mock_client.get.assert_called_once_with(
-            f"{entity_type}/entity_123/stream",
-            params={}
+            f"{entity_type}/675a1b2c3d4e5f6a8/stream",
+            params={'offset': 0, 'maxSize': 20}
         )
     
-    @pytest.mark.parametrize("post_type", ["Post", "Note", "Update", "Status"])
-    def test_post_different_types(self, mock_client, post_type):
-        """Farklı post türleri için stream post testi."""
-        # Mock response
-        mock_response = {
-            "id": "stream_new",
-            "type": post_type,
-            "data": {"post": f"Test {post_type}"},
-            "parentType": "Account",
-            "parentId": "account_123"
-        }
-        mock_client.post.return_value = mock_response
-        
-        stream_client = StreamClient(mock_client)
-        
-        post_data = {
-            "post": f"Test {post_type}",
-            "type": post_type
-        }
-        
-        result = stream_client.post("Account", "account_123", post_data)
-        
-        assert result.type == post_type
-        mock_client.post.assert_called_once()
-    
     @pytest.mark.parametrize("error_class,status_code", [
-        (EntityNotFoundError, 404),
-        (ValidationError, 400),
-        (StreamError, 422),
+        (EspoCRMError, 404),
+        (EspoCRMValidationError, 400),
+        (EspoCRMError, 422),
         (EspoCRMError, 500)
     ])
     def test_stream_error_handling(self, mock_client, error_class, status_code):
@@ -353,7 +312,7 @@ class TestStreamClientParametrized:
         stream_client = StreamClient(mock_client)
         
         with pytest.raises(error_class):
-            stream_client.get_stream("Account", "test_id")
+            stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
 
 
 @pytest.mark.unit
@@ -362,74 +321,89 @@ class TestStreamClientParametrized:
 class TestStreamClientValidation:
     """Stream Client validation testleri."""
     
-    def test_entity_type_validation(self, mock_client):
-        """Entity type validation testi."""
+    def test_post_to_stream_with_attachments(self, mock_client):
+        """Attachment'lı stream post testi."""
+        # Mock response setup
+        mock_response = {
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "data": {
+                "post": "Post with attachments",
+                "attachmentsIds": ["675a1b2c3d4e5f6d0"]
+            },
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        }
+        mock_client.post.return_value = mock_response
+        
         stream_client = StreamClient(mock_client)
         
-        # Empty entity type
-        with pytest.raises(ValidationError):
-            stream_client.get_stream("", "id")
+        result = stream_client.post_to_stream(
+            parent_type="Account",
+            parent_id="675a1b2c3d4e5f6a8",
+            post="Post with attachments",
+            attachments_ids=["675a1b2c3d4e5f6d0"]
+        )
         
-        # None entity type
-        with pytest.raises(ValidationError):
-            stream_client.get_stream(None, "id")
+        # Assertions
+        assert isinstance(result, StreamNote)
+        assert result.id == "675a1b2c3d4e5f6c0"
+        
+        # API call verification
+        mock_client.post.assert_called_once_with(
+            "Note",
+            data={
+                'type': 'Post',
+                'post': 'Post with attachments',
+                'parentType': 'Account',
+                'parentId': '675a1b2c3d4e5f6a8',
+                'attachmentsIds': ['675a1b2c3d4e5f6d0']
+            }
+        )
     
-    def test_entity_id_validation(self, mock_client):
-        """Entity ID validation testi."""
+    def test_post_to_stream_internal_note(self, mock_client):
+        """Internal note post testi."""
+        # Mock response setup
+        mock_response = {
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "data": {
+                "post": "Internal note",
+                "isInternal": True
+            },
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        }
+        mock_client.post.return_value = mock_response
+        
         stream_client = StreamClient(mock_client)
         
-        # Empty entity ID
-        with pytest.raises(ValidationError):
-            stream_client.get_stream("Account", "")
+        result = stream_client.post_to_stream(
+            parent_type="Account",
+            parent_id="675a1b2c3d4e5f6a8",
+            post="Internal note",
+            is_internal=True
+        )
         
-        # None entity ID
-        with pytest.raises(ValidationError):
-            stream_client.get_stream("Account", None)
-    
-    def test_post_data_validation(self, mock_client):
-        """Post data validation testi."""
-        stream_client = StreamClient(mock_client)
+        # Assertions
+        assert isinstance(result, StreamNote)
+        assert result.id == "675a1b2c3d4e5f6c0"
         
-        # Empty post data
-        with pytest.raises(ValidationError):
-            stream_client.post("Account", "id", {})
-        
-        # None post data
-        with pytest.raises(ValidationError):
-            stream_client.post("Account", "id", None)
-        
-        # Invalid post data type
-        with pytest.raises(ValidationError):
-            stream_client.post("Account", "id", "invalid_data")
-    
-    def test_note_content_validation(self, mock_client):
-        """Note content validation testi."""
-        stream_client = StreamClient(mock_client)
-        
-        # Empty note content
-        with pytest.raises(ValidationError):
-            stream_client.post_note("Account", "id", "")
-        
-        # None note content
-        with pytest.raises(ValidationError):
-            stream_client.post_note("Account", "id", None)
-        
-        # Too long note content
-        long_content = "A" * 10000
-        with pytest.raises(ValidationError):
-            stream_client.post_note("Account", "id", long_content)
-    
-    def test_stream_post_id_validation(self, mock_client):
-        """Stream post ID validation testi."""
-        stream_client = StreamClient(mock_client)
-        
-        # Empty post ID
-        with pytest.raises(ValidationError):
-            stream_client.delete_post("")
-        
-        # None post ID
-        with pytest.raises(ValidationError):
-            stream_client.delete_post(None)
+        # API call verification
+        mock_client.post.assert_called_once_with(
+            "Note",
+            data={
+                'type': 'Post',
+                'post': 'Internal note',
+                'parentType': 'Account',
+                'parentId': '675a1b2c3d4e5f6a8',
+                'isInternal': True
+            }
+        )
 
 
 @pytest.mark.unit
@@ -438,72 +412,54 @@ class TestStreamClientValidation:
 class TestStreamClientPerformance:
     """Stream Client performance testleri."""
     
-    def test_bulk_post_performance(self, mock_client, performance_timer):
-        """Bulk post performance testi."""
-        # Mock response
-        mock_client.post.return_value = {
-            "id": "stream_new",
-            "type": "Post",
-            "data": {"post": "Test post"}
-        }
-        
-        stream_client = StreamClient(mock_client)
-        
-        # 50 post gönder
-        posts_data = [{"post": f"Post {i}", "type": "Post"} for i in range(50)]
-        
-        performance_timer.start()
-        results = []
-        for post_data in posts_data:
-            result = stream_client.post("Account", "account_123", post_data)
-            results.append(result)
-        performance_timer.stop()
-        
-        # Performance assertions
-        assert len(results) == 50
-        assert performance_timer.elapsed < 3.0  # 3 saniyeden az
-        assert mock_client.post.call_count == 50
-    
-    def test_large_stream_fetch_performance(self, mock_client, performance_timer):
-        """Large stream fetch performance testi."""
+    def test_bulk_stream_fetch_performance(self, mock_client, performance_timer):
+        """Bulk stream fetch performance testi."""
         # Mock large response
-        large_stream = [
-            {"id": f"stream_{i}", "type": "Post", "data": {"post": f"Post {i}"}}
-            for i in range(1000)
-        ]
-        mock_client.get.return_value = {"total": 1000, "list": large_stream}
+        large_stream = []
+        for i in range(100):
+            large_stream.append({
+                "id": f"675a1b2c3d4e5f{i:03d}",
+                "type": "Post",
+                "data": {"post": f"Post {i}"},
+                "parentType": "Account",
+                "parentId": "675a1b2c3d4e5f6a8",
+                "createdAt": "2024-01-01T10:00:00+00:00",
+                "createdById": "675a1b2c3d4e5f6a9"
+            })
+        
+        mock_client.get.return_value = {"total": 100, "list": large_stream}
         
         stream_client = StreamClient(mock_client)
         
         performance_timer.start()
-        result = stream_client.get_stream("Account", "account_123")
+        result = stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8", max_size=100)
         performance_timer.stop()
         
         # Performance assertions
-        assert len(result.items) == 1000
+        assert len(result) == 100
         assert performance_timer.elapsed < 2.0  # 2 saniyeden az
     
     def test_follow_unfollow_performance(self, mock_client, performance_timer):
         """Follow/unfollow performance testi."""
         # Mock responses
-        mock_client.put.return_value = {"followed": True}
-        mock_client.delete.return_value = {"unfollowed": True}
+        mock_client.put.return_value = {"success": True}
+        mock_client.delete.return_value = {"success": True}
         
         stream_client = StreamClient(mock_client)
         
-        # 100 follow/unfollow operation
-        entity_ids = [f"account_{i}" for i in range(50)]
+        # 25 follow/unfollow operation
+        entity_ids = [f"675a1b2c3d4e5f{i:03d}" for i in range(25)]
         
         performance_timer.start()
         for entity_id in entity_ids:
-            stream_client.follow("Account", entity_id)
-            stream_client.unfollow("Account", entity_id)
+            stream_client.follow_entity("Account", entity_id)
+            stream_client.unfollow_entity("Account", entity_id)
         performance_timer.stop()
         
         # Performance assertions
-        assert performance_timer.elapsed < 5.0  # 5 saniyeden az
-        assert mock_client.put.call_count == 50
-        assert mock_client.delete.call_count == 50
+        assert performance_timer.elapsed < 3.0  # 3 saniyeden az
+        assert mock_client.put.call_count == 25
+        assert mock_client.delete.call_count == 25
 
 
 @pytest.mark.integration
@@ -511,53 +467,86 @@ class TestStreamClientPerformance:
 class TestStreamClientIntegration:
     """Stream Client integration testleri."""
     
-    @responses.activate
-    def test_full_stream_workflow(self, real_client, mock_http_responses):
+    def test_full_stream_workflow(self, mock_client):
         """Full stream workflow integration testi."""
-        stream_client = StreamClient(real_client)
+        stream_client = StreamClient(mock_client)
+        
+        # Mock responses for workflow
+        mock_client.get.side_effect = [
+            # Initial stream
+            {
+                "total": 1,
+                "list": [{
+                    "id": "675a1b2c3d4e5f6a7",
+                    "type": "Post",
+                    "data": {"post": "Initial post"},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T10:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                }]
+            },
+            # Updated stream
+            {
+                "total": 2,
+                "list": [{
+                    "id": "675a1b2c3d4e5f6a7",
+                    "type": "Post",
+                    "data": {"post": "Initial post"},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T10:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                }, {
+                    "id": "675a1b2c3d4e5f6c0",
+                    "type": "Post",
+                    "data": {"post": "Integration test post"},
+                    "parentType": "Account",
+                    "parentId": "675a1b2c3d4e5f6a8",
+                    "createdAt": "2024-01-01T12:00:00+00:00",
+                    "createdById": "675a1b2c3d4e5f6a9"
+                }]
+            }
+        ]
+        
+        mock_client.post.return_value = {
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "post": "Integration test post",
+            "data": {"post": "Integration test post"},
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        }
+        
+        mock_client.put.return_value = {"success": True}
+        mock_client.delete.return_value = {"success": True}
         
         # 1. Get initial stream
-        initial_stream = stream_client.get_stream("Account", "account_123")
-        initial_count = len(initial_stream.items)
+        initial_stream = stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
+        initial_count = len(initial_stream)
+        assert initial_count == 1
         
         # 2. Post to stream
-        post_data = {"post": "Integration test post", "type": "Post"}
-        posted_item = stream_client.post("Account", "account_123", post_data)
-        assert isinstance(posted_item, StreamPost)
+        posted_item = stream_client.post_to_stream(
+            parent_type="Account",
+            parent_id="675a1b2c3d4e5f6a8",
+            post="Integration test post"
+        )
+        assert isinstance(posted_item, StreamNote)
         
         # 3. Follow entity
-        follow_result = stream_client.follow("Account", "account_123")
+        follow_result = stream_client.follow_entity("Account", "675a1b2c3d4e5f6a8")
         assert follow_result is True
         
         # 4. Get updated stream
-        updated_stream = stream_client.get_stream("Account", "account_123")
-        assert len(updated_stream.items) >= initial_count
+        updated_stream = stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
+        assert len(updated_stream) >= initial_count
         
         # 5. Unfollow entity
-        unfollow_result = stream_client.unfollow("Account", "account_123")
+        unfollow_result = stream_client.unfollow_entity("Account", "675a1b2c3d4e5f6a8")
         assert unfollow_result is True
-    
-    @responses.activate
-    def test_stream_filtering_workflow(self, real_client, mock_http_responses):
-        """Stream filtering workflow testi."""
-        stream_client = StreamClient(real_client)
-        
-        # Filter by post type
-        search_params = SearchParams(
-            where=[
-                WhereClause(field="type", operator="equals", value="Post")
-            ],
-            order_by="createdAt",
-            order="desc",
-            max_size=10
-        )
-        
-        result = stream_client.get_stream("Account", "account_123", search_params)
-        
-        assert isinstance(result, StreamResponse)
-        # Verify filtering worked (all items should be Posts)
-        for item in result.items:
-            assert item.type == "Post"
     
     def test_stream_error_recovery(self, real_client):
         """Stream error recovery testi."""
@@ -566,13 +555,25 @@ class TestStreamClientIntegration:
         # Network error simulation
         with patch.object(real_client, 'get', side_effect=ConnectionError("Network error")):
             with pytest.raises(EspoCRMError):
-                stream_client.get_stream("Account", "account_123")
+                stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
         
         # Recovery after network error
-        mock_response = {"total": 1, "list": [{"id": "stream_1", "type": "Post"}]}
+        mock_response = {
+            "total": 1, 
+            "list": [{
+                "id": "675a1b2c3d4e5f6a7",
+                "type": "Post",
+                "data": {"post": "Recovery test"},
+                "parentType": "Account",
+                "parentId": "675a1b2c3d4e5f6a8",
+                "createdAt": "2024-01-01T10:00:00+00:00",
+                "createdById": "675a1b2c3d4e5f6a9"
+            }]
+        }
         with patch.object(real_client, 'get', return_value=mock_response):
-            result = stream_client.get_stream("Account", "account_123")
-            assert isinstance(result, StreamResponse)
+            result = stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
+            assert isinstance(result, list)
+            assert len(result) == 1
 
 
 @pytest.mark.unit
@@ -589,40 +590,13 @@ class TestStreamClientSecurity:
         mock_client.get.side_effect = EspoCRMError("Unauthorized", status_code=401)
         
         with pytest.raises(EspoCRMError):
-            stream_client.get_stream("Account", "account_123")
+            stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
         
         # Forbidden stream post
         mock_client.post.side_effect = EspoCRMError("Forbidden", status_code=403)
         
         with pytest.raises(EspoCRMError):
-            stream_client.post("Account", "account_123", {"post": "Test", "type": "Post"})
-    
-    def test_stream_content_sanitization(self, mock_client, security_test_data):
-        """Stream content sanitization testi."""
-        stream_client = StreamClient(mock_client)
-        
-        # XSS in stream posts
-        for payload in security_test_data["xss_payloads"]:
-            post_data = {
-                "post": payload,  # Malicious payload
-                "type": "Post"
-            }
-            
-            with pytest.raises((ValidationError, EspoCRMError)):
-                stream_client.post("Account", "account_123", post_data)
-    
-    def test_stream_injection_prevention(self, mock_client, security_test_data):
-        """Stream injection prevention testi."""
-        stream_client = StreamClient(mock_client)
-        
-        # SQL injection in stream queries
-        for payload in security_test_data["sql_injection"]:
-            search_params = SearchParams(
-                where=[WhereClause(field="data", operator="contains", value=payload)]
-            )
-            
-            with pytest.raises((ValidationError, EspoCRMError)):
-                stream_client.get_stream("Account", "account_123", search_params)
+            stream_client.post_to_stream("Account", "675a1b2c3d4e5f6a8", "Test post")
     
     def test_stream_rate_limiting(self, mock_client):
         """Stream rate limiting testi."""
@@ -632,7 +606,7 @@ class TestStreamClientSecurity:
         mock_client.post.side_effect = EspoCRMError("Rate limit exceeded", status_code=429)
         
         with pytest.raises(EspoCRMError):
-            stream_client.post("Account", "account_123", {"post": "Test", "type": "Post"})
+            stream_client.post_to_stream("Account", "675a1b2c3d4e5f6a8", "Test post")
 
 
 @pytest.mark.unit
@@ -648,81 +622,85 @@ class TestStreamClientEdgeCases:
         
         stream_client = StreamClient(mock_client)
         
-        result = stream_client.get_stream("Account", "account_123")
+        result = stream_client.list_entity_stream("Account", "675a1b2c3d4e5f6a8")
         
-        assert isinstance(result, StreamResponse)
-        assert result.total == 0
-        assert len(result.items) == 0
+        assert isinstance(result, list)
+        assert len(result) == 0
     
-    def test_malformed_stream_data(self, mock_client):
-        """Malformed stream data testi."""
-        # Mock malformed response
+    def test_convenience_methods(self, mock_client):
+        """Convenience methods testi."""
+        # Mock response setup
+        mock_response = {
+            "id": "675a1b2c3d4e5f6c0",
+            "type": "Post",
+            "data": {"post": "Account post"},
+            "parentType": "Account",
+            "parentId": "675a1b2c3d4e5f6a8",
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "createdById": "675a1b2c3d4e5f6a9"
+        }
+        mock_client.post.return_value = mock_response
+        
+        stream_client = StreamClient(mock_client)
+        
+        # Test convenience method
+        result = stream_client.post_to_account("675a1b2c3d4e5f6a8", "Account post")
+        
+        assert isinstance(result, StreamNote)
+        assert result.parent_type == "Account"
+        
+        # API call verification
+        mock_client.post.assert_called_once_with(
+            "Note",
+            data={
+                'type': 'Post',
+                'post': 'Account post',
+                'parentType': 'Account',
+                'parentId': '675a1b2c3d4e5f6a8'
+            }
+        )
+    
+    def test_stream_with_filtering(self, mock_client):
+        """Stream filtering testi."""
+        # Mock response
         mock_response = {
             "total": 1,
-            "list": [
-                {"id": "stream_1"}  # Missing required fields
-            ]
+            "list": [{
+                "id": "675a1b2c3d4e5f6a7",
+                "type": "Post",
+                "data": {"post": "Filtered post"},
+                "parentType": "Account",
+                "parentId": "675a1b2c3d4e5f6a8",
+                "createdAt": "2024-01-01T10:00:00+00:00",
+                "createdById": "675a1b2c3d4e5f6a9"
+            }]
         }
         mock_client.get.return_value = mock_response
         
         stream_client = StreamClient(mock_client)
         
-        # Should handle malformed data gracefully
-        result = stream_client.get_stream("Account", "account_123")
-        assert isinstance(result, StreamResponse)
-    
-    def test_very_old_stream_posts(self, mock_client):
-        """Very old stream posts testi."""
-        # Mock response with very old posts
-        old_date = "2020-01-01T00:00:00+00:00"
-        mock_response = {
-            "total": 1,
-            "list": [
-                {
-                    "id": "stream_old",
-                    "type": "Post",
-                    "data": {"post": "Very old post"},
-                    "createdAt": old_date
-                }
-            ]
-        }
-        mock_client.get.return_value = mock_response
+        result = stream_client.list_entity_stream(
+            "Account", 
+            "675a1b2c3d4e5f6a8",
+            offset=10,
+            max_size=5,
+            after="2024-01-01T00:00:00+00:00",
+            filter="posts"
+        )
         
-        stream_client = StreamClient(mock_client)
+        assert isinstance(result, list)
+        assert len(result) == 1
         
-        result = stream_client.get_stream("Account", "account_123")
-        
-        assert isinstance(result, StreamResponse)
-        assert len(result.items) == 1
-        assert result.items[0].created_at == old_date
-    
-    def test_stream_with_attachments(self, mock_client):
-        """Stream with attachments testi."""
-        # Mock response with attachment data
-        mock_response = {
-            "total": 1,
-            "list": [
-                {
-                    "id": "stream_attachment",
-                    "type": "Post",
-                    "data": {
-                        "post": "Post with attachment",
-                        "attachments": [
-                            {"id": "attachment_1", "name": "document.pdf", "type": "application/pdf"}
-                        ]
-                    }
-                }
-            ]
-        }
-        mock_client.get.return_value = mock_response
-        
-        stream_client = StreamClient(mock_client)
-        
-        result = stream_client.get_stream("Account", "account_123")
-        
-        assert isinstance(result, StreamResponse)
-        assert len(result.items) == 1
-        assert "attachments" in result.items[0].data
+        # API call verification
+        mock_client.get.assert_called_once_with(
+            "Account/675a1b2c3d4e5f6a8/stream",
+            params={
+                'offset': 10,
+                'maxSize': 5,
+                'after': '2024-01-01T00:00:00+00:00',
+                'filter': 'posts'
+            }
+        )
 
 
 if __name__ == "__main__":

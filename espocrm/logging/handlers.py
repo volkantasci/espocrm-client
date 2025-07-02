@@ -579,3 +579,198 @@ def create_async_handler(
         Async handler instance
     """
     return AsyncHandler(target_handler=target_handler, **kwargs)
+
+
+class HTTPHandler(logging.Handler):
+    """
+    HTTP handler for sending logs to remote endpoints
+    
+    Sends log records to HTTP endpoints for:
+    - Centralized logging services
+    - Log aggregation systems
+    - Monitoring dashboards
+    - Alert systems
+    """
+    
+    def __init__(
+        self,
+        url: str,
+        method: str = 'POST',
+        headers: Optional[Dict[str, str]] = None,
+        timeout: float = 10.0,
+        retry_count: int = 3,
+        retry_delay: float = 1.0,
+        batch_size: int = 1,
+        flush_interval: float = 5.0
+    ):
+        """
+        Initialize HTTP handler
+        
+        Args:
+            url: Target URL for log submissions
+            method: HTTP method (POST, PUT, etc.)
+            headers: Additional HTTP headers
+            timeout: Request timeout in seconds
+            retry_count: Number of retry attempts
+            retry_delay: Delay between retries
+            batch_size: Number of logs to batch together
+            flush_interval: Interval to flush batched logs
+        """
+        super().__init__()
+        
+        self.url = url
+        self.method = method.upper()
+        self.headers = headers or {}
+        self.timeout = timeout
+        self.retry_count = retry_count
+        self.retry_delay = retry_delay
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+        
+        # Batching support
+        self._batch: list = []
+        self._last_flush = time.time()
+        self._lock = threading.RLock()
+        
+        # Default headers
+        self.headers.setdefault('Content-Type', 'application/json')
+        self.headers.setdefault('User-Agent', 'EspoCRM-Python-Client/1.0')
+    
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emit log record via HTTP"""
+        try:
+            log_entry = self._format_record(record)
+            
+            with self._lock:
+                self._batch.append(log_entry)
+                
+                # Check if we should flush
+                should_flush = (
+                    len(self._batch) >= self.batch_size or
+                    time.time() - self._last_flush >= self.flush_interval
+                )
+                
+                if should_flush:
+                    self._flush_batch()
+                    
+        except Exception:
+            self.handleError(record)
+    
+    def _format_record(self, record: logging.LogRecord) -> Dict[str, Any]:
+        """Format log record for HTTP transmission"""
+        log_entry = {
+            'timestamp': datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno,
+        }
+        
+        # Add exception info if present
+        if record.exc_info:
+            log_entry['exception'] = self.formatException(record.exc_info)
+        
+        # Add custom fields from record
+        for key, value in record.__dict__.items():
+            if key not in log_entry and not key.startswith('_') and key not in {
+                'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
+                'filename', 'module', 'lineno', 'funcName', 'created',
+                'msecs', 'relativeCreated', 'thread', 'threadName',
+                'processName', 'process', 'getMessage', 'exc_info',
+                'exc_text', 'stack_info'
+            }:
+                try:
+                    # Only include JSON-serializable values
+                    import json
+                    json.dumps(value)
+                    log_entry[key] = value
+                except (TypeError, ValueError):
+                    log_entry[key] = str(value)
+        
+        return log_entry
+    
+    def _flush_batch(self) -> None:
+        """Flush batched log records"""
+        if not self._batch:
+            return
+        
+        batch_to_send = self._batch.copy()
+        self._batch.clear()
+        self._last_flush = time.time()
+        
+        # Send in background thread to avoid blocking
+        thread = threading.Thread(
+            target=self._send_batch,
+            args=(batch_to_send,),
+            daemon=True
+        )
+        thread.start()
+    
+    def _send_batch(self, batch: list) -> None:
+        """Send batch of log records via HTTP"""
+        import json
+        
+        try:
+            # Prepare payload
+            if len(batch) == 1:
+                payload = batch[0]
+            else:
+                payload = {'logs': batch}
+            
+            data = json.dumps(payload, default=str)
+            
+            # Send with retries
+            for attempt in range(self.retry_count + 1):
+                try:
+                    import requests
+                    
+                    response = requests.request(
+                        method=self.method,
+                        url=self.url,
+                        data=data,
+                        headers=self.headers,
+                        timeout=self.timeout
+                    )
+                    
+                    response.raise_for_status()
+                    break  # Success
+                    
+                except Exception as e:
+                    if attempt < self.retry_count:
+                        time.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                    else:
+                        # Final attempt failed, log error locally
+                        import sys
+                        print(f"HTTPHandler failed to send logs: {e}", file=sys.stderr)
+                        
+        except Exception as e:
+            import sys
+            print(f"HTTPHandler error: {e}", file=sys.stderr)
+    
+    def flush(self) -> None:
+        """Flush any pending log records"""
+        with self._lock:
+            self._flush_batch()
+    
+    def close(self) -> None:
+        """Close HTTP handler"""
+        self.flush()
+        super().close()
+
+
+# Update __all__ to include new handler
+__all__ = [
+    "ThreadSafeHandler",
+    "FileHandler",
+    "ConsoleHandler",
+    "RotatingFileHandler",
+    "TimedRotatingHandler",
+    "AsyncHandler",
+    "MonitoringHandler",
+    "HTTPHandler",
+    "create_file_handler",
+    "create_console_handler",
+    "create_async_handler",
+]

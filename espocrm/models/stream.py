@@ -282,14 +282,14 @@ class StreamNote(EspoCRMBaseModel):
         if not self.mentioned_users:
             return []
         
-        return [user.get("id") for user in self.mentioned_users if user.get("id")]
+        return [user["id"] for user in self.mentioned_users if user.get("id")]
     
     def get_mentioned_user_names(self) -> List[str]:
         """Mention edilen kullanıcı adlarını döndürür."""
         if not self.mentioned_users:
             return []
         
-        return [user.get("name") for user in self.mentioned_users if user.get("name")]
+        return [user["name"] for user in self.mentioned_users if user.get("name")]
     
     def is_visible_to_team(self, team_id: str) -> bool:
         """Belirtilen team'e görünür mü kontrol eder."""
@@ -477,6 +477,29 @@ class PostRequest(EspoCRMBaseModel):
     def is_portal_post(self) -> bool:
         """Portal post'u mu kontrol eder."""
         return bool(self.portal_id)
+    
+    def to_api_dict(self) -> Dict[str, Any]:
+        """API request için dict formatına çevirir."""
+        data: Dict[str, Any] = {
+            "type": self.type,
+            "post": self.post,
+            "parentType": self.parent_type,
+            "parentId": self.parent_id
+        }
+        
+        if self.attachments_ids:
+            data["attachmentsIds"] = self.attachments_ids
+        
+        if self.is_internal is not None:
+            data["isInternal"] = self.is_internal
+        
+        if self.teams_ids:
+            data["teamsIds"] = self.teams_ids
+        
+        if self.portal_id:
+            data["portalId"] = self.portal_id
+        
+        return data
 
 
 class StreamListRequest(EspoCRMBaseModel):
@@ -593,7 +616,7 @@ class StreamListRequest(EspoCRMBaseModel):
     
     def to_query_params(self) -> Dict[str, Any]:
         """Query parameters'a çevirir."""
-        params = {
+        params: Dict[str, Any] = {
             "offset": self.offset,
             "maxSize": self.max_size,
         }
@@ -673,13 +696,13 @@ def create_post_request(
         PostRequest instance'ı
     """
     return PostRequest(
-        parent_type=parent_type,
-        parent_id=parent_id,
+        parentType=parent_type,
+        parentId=parent_id,
         post=post,
-        attachments_ids=attachments_ids,
-        is_internal=is_internal,
-        teams_ids=teams_ids,
-        portal_id=portal_id
+        attachmentsIds=attachments_ids,
+        isInternal=is_internal,
+        teamsIds=teams_ids,
+        portalId=portal_id
     )
 
 
@@ -710,13 +733,13 @@ def create_stream_list_request(
     """
     return StreamListRequest(
         offset=offset,
-        max_size=max_size,
-        entity_type=entity_type,
-        entity_id=entity_id,
+        maxSize=max_size,
+        entityType=entity_type,
+        entityId=entity_id,
         after=after,
         filter=filter,
-        note_types=note_types,
-        user_id=user_id
+        noteTypes=note_types,
+        userId=user_id
     )
 
 
@@ -739,6 +762,11 @@ def create_subscription_request(
     )
 
 
+# Alias'lar - backward compatibility için
+StreamPost = PostRequest
+StreamUpdate = StreamNote
+
+
 # Export edilecek sınıflar ve fonksiyonlar
 __all__ = [
     # Enums
@@ -750,6 +778,10 @@ __all__ = [
     "PostRequest",
     "StreamListRequest",
     "SubscriptionRequest",
+    
+    # Aliases
+    "StreamPost",
+    "StreamUpdate",
     
     # Factory functions
     "create_post_request",

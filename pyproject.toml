@@ -190,6 +190,8 @@ markers = [
     "stream: Stream tests - activity stream functionality",
     "attachments: Attachment tests - file upload and management",
     "logging: Logging tests - structured logging and metrics",
+    "utils: Utility tests - helper functions and utilities",
+    "models: Model tests - data models and validation",
     "validation: Validation tests - data validation and constraints",
     "error_handling: Error handling tests - exception scenarios",
     "edge_cases: Edge case tests - boundary conditions and unusual inputs",

@@ -325,6 +325,42 @@ def create_exception_from_status_code(
         )
 
 
+class EspoCRMEntityError(EspoCRMError):
+    """Entity-related errors for exception sınıfı.
+    
+    Entity operations sırasında oluşan hatalar için kullanılır.
+    Geçersiz entity data, missing fields gibi durumlarda kullanılır.
+    """
+    
+    def __init__(
+        self,
+        message: str = "Entity error",
+        status_code: Optional[int] = 400,
+        details: Optional[Dict[str, Any]] = None,
+        response_data: Optional[Dict[str, Any]] = None,
+        entity_type: Optional[str] = None,
+        entity_id: Optional[Union[str, int]] = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status_code,
+            details=details,
+            response_data=response_data,
+        )
+        self.entity_type = entity_type
+        self.entity_id = entity_id
+
+
+# Backward compatibility aliases
+RateLimitError = EspoCRMRateLimitError
+ValidationError = EspoCRMValidationError
+AuthenticationError = EspoCRMAuthenticationError
+EntityError = EspoCRMEntityError
+EntityNotFoundError = EspoCRMNotFoundError  # Test dosyalarında kullanılan alias
+AttachmentError = EspoCRMEntityError  # Attachment işlemleri için
+RelationshipError = EspoCRMEntityError  # Relationship işlemleri için
+StreamError = EspoCRMEntityError  # Stream işlemleri için
+
 # Exception sınıflarının listesi - dışarıdan import edilebilir
 __all__ = [
     "EspoCRMError",
@@ -336,5 +372,15 @@ __all__ = [
     "EspoCRMRateLimitError",
     "EspoCRMNotFoundError",
     "EspoCRMServerError",
+    "EspoCRMEntityError",
     "create_exception_from_status_code",
+    # Backward compatibility aliases
+    "RateLimitError",
+    "ValidationError",
+    "AuthenticationError",
+    "EntityError",
+    "EntityNotFoundError",
+    "AttachmentError",
+    "RelationshipError",
+    "StreamError",
 ]

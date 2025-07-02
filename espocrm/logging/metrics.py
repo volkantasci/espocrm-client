@@ -622,3 +622,104 @@ def time_operation(operation: str, context: Optional[Dict[str, Any]] = None):
 def get_stats(time_window: Optional[timedelta] = None) -> Dict[str, Any]:
     """Get stats using global collector"""
     return get_metrics_collector().get_stats(time_window)
+
+
+class LogMetrics:
+    """
+    Log-specific metrics collection
+    
+    Tracks logging-related metrics:
+    - Log counts by level
+    - Error rates
+    - Response times
+    - Logger performance
+    """
+    
+    def __init__(self):
+        """Initialize log metrics"""
+        self.total_logs = 0
+        self.error_count = 0
+        self.warning_count = 0
+        self.log_levels: Dict[str, int] = defaultdict(int)
+        self.response_times: List[float] = []
+        self._lock = threading.RLock()
+    
+    def record_log(self, level: str, duration: Optional[float] = None) -> None:
+        """
+        Record a log entry
+        
+        Args:
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            duration: Optional duration for the logged operation
+        """
+        with self._lock:
+            self.total_logs += 1
+            self.log_levels[level] += 1
+            
+            if level == 'ERROR' or level == 'CRITICAL':
+                self.error_count += 1
+            elif level == 'WARNING':
+                self.warning_count += 1
+            
+            if duration is not None:
+                self.response_times.append(duration)
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """
+        Get log statistics
+        
+        Returns:
+            Dictionary with log statistics
+        """
+        with self._lock:
+            stats = {
+                'total_logs': self.total_logs,
+                'error_count': self.error_count,
+                'warning_count': self.warning_count,
+                'log_levels': dict(self.log_levels),
+            }
+            
+            if self.response_times:
+                stats.update({
+                    'average_response_time': mean(self.response_times),
+                    'min_response_time': min(self.response_times),
+                    'max_response_time': max(self.response_times),
+                    'median_response_time': median(self.response_times),
+                })
+            else:
+                stats.update({
+                    'average_response_time': 0.0,
+                    'min_response_time': 0.0,
+                    'max_response_time': 0.0,
+                    'median_response_time': 0.0,
+                })
+            
+            return stats
+    
+    def reset(self) -> None:
+        """Reset all metrics"""
+        with self._lock:
+            self.total_logs = 0
+            self.error_count = 0
+            self.warning_count = 0
+            self.log_levels.clear()
+            self.response_times.clear()
+
+
+# Update __all__ to include LogMetrics
+__all__ = [
+    "RequestMetrics",
+    "PerformanceMetrics",
+    "CounterMetrics",
+    "Timer",
+    "MetricsAggregator",
+    "MetricsCollector",
+    "LogMetrics",
+    "get_metrics_collector",
+    "set_metrics_collector",
+    "record_request",
+    "record_performance",
+    "increment_counter",
+    "time_operation",
+    "get_stats",
+]

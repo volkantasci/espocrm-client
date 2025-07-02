@@ -43,6 +43,16 @@ class StreamClient:
         self.client = main_client
         self.logger = main_client.logger
     
+    @property
+    def base_url(self) -> str:
+        """Ana client'tan base_url'e erişim sağlar."""
+        return self.client.base_url
+    
+    @property
+    def api_version(self) -> str:
+        """Ana client'tan api_version'a erişim sağlar."""
+        return self.client.api_version
+    
     @timing_decorator
     def list_user_stream(
         self,
@@ -526,6 +536,7 @@ class StreamClient:
             else:
                 raise EspoCRMError(f"Entity takip durumu kontrol hatası: {str(e)}")
     
+    @timing_decorator
     def get_stream_note(
         self,
         note_id: str
@@ -573,6 +584,7 @@ class StreamClient:
             else:
                 raise EspoCRMError(f"Stream note getirme hatası: {str(e)}")
     
+    @timing_decorator
     def delete_stream_note(
         self,
         note_id: str

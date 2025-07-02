@@ -22,9 +22,8 @@ from espocrm.models.metadata import (
 )
 from espocrm.exceptions import (
     EspoCRMError,
-    EntityNotFoundError,
-    ValidationError,
-    MetadataError
+    EspoCRMNotFoundError,
+    EspoCRMValidationError
 )
 
 
@@ -536,7 +535,6 @@ class TestMetadataCache:
 
 @pytest.mark.unit
 @pytest.mark.metadata
-@pytest.mark.parametrize
 class TestMetadataClientParametrized:
     """Metadata Client parametrized testleri."""
     
@@ -630,9 +628,9 @@ class TestMetadataClientParametrized:
         assert result.type == expected_type
     
     @pytest.mark.parametrize("error_class,status_code", [
-        (EntityNotFoundError, 404),
-        (ValidationError, 400),
-        (MetadataError, 422),
+        (EspoCRMNotFoundError, 404),
+        (EspoCRMValidationError, 400),
+        (EspoCRMError, 422),
         (EspoCRMError, 500)
     ])
     def test_metadata_error_handling(self, mock_client, error_class, status_code):
@@ -656,11 +654,11 @@ class TestMetadataClientValidation:
         meta_client = MetadataClient(mock_client)
         
         # Empty entity type
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.get_entity_metadata("")
         
         # None entity type
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.get_entity_metadata(None)
     
     def test_field_name_validation(self, mock_client):
@@ -668,11 +666,11 @@ class TestMetadataClientValidation:
         meta_client = MetadataClient(mock_client)
         
         # Empty field name
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.get_field_metadata("Account", "")
         
         # None field name
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.get_field_metadata("Account", None)
     
     def test_relationship_name_validation(self, mock_client):
@@ -680,11 +678,11 @@ class TestMetadataClientValidation:
         meta_client = MetadataClient(mock_client)
         
         # Empty relationship name
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.get_relationship_metadata("Account", "")
         
         # None relationship name
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.get_relationship_metadata("Account", None)
     
     def test_validation_data_validation(self, mock_client):
@@ -692,11 +690,11 @@ class TestMetadataClientValidation:
         meta_client = MetadataClient(mock_client)
         
         # None validation data
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.validate_entity_data("Account", None)
         
         # Invalid validation data type
-        with pytest.raises(ValidationError):
+        with pytest.raises(EspoCRMValidationError):
             meta_client.validate_entity_data("Account", "invalid_data")
 
 
@@ -852,7 +850,7 @@ class TestMetadataClientSecurity:
         
         # SQL injection in entity names
         for payload in security_test_data["sql_injection"]:
-            with pytest.raises((ValidationError, EspoCRMError)):
+            with pytest.raises((EspoCRMValidationError, EspoCRMError)):
                 meta_client.get_entity_metadata(payload)
     
     def test_metadata_sanitization(self, mock_client, security_test_data):
@@ -866,7 +864,7 @@ class TestMetadataClientSecurity:
             # Should handle malicious data safely
             try:
                 meta_client.validate_entity_data("Account", validation_data)
-            except (ValidationError, EspoCRMError):
+            except (EspoCRMValidationError, EspoCRMError):
                 pass  # Expected for malicious payloads
 
 

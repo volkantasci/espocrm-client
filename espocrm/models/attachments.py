@@ -159,17 +159,18 @@ class AttachmentMetadata(BaseModel):
     
     def get_human_readable_size(self) -> str:
         """İnsan okunabilir dosya boyutu döndürür."""
+        size = float(self.size)
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if self.size < 1024.0:
-                return f"{self.size:.1f} {unit}"
-            self.size /= 1024.0
-        return f"{self.size:.1f} PB"
+            if size < 1024.0:
+                return f"{size:.1f} {unit}"
+            size /= 1024.0
+        return f"{size:.1f} PB"
 
 
 class Attachment(EspoCRMBaseModel):
     """EspoCRM Attachment entity modeli."""
     
-    # Temel attachment bilgileri
+    # Temel attachment bilgileri - name field'ını required olarak override et
     name: str = Field(
         description="Dosya adı",
         max_length=255
@@ -386,11 +387,14 @@ class AttachmentUploadRequest(BaseModel):
     @classmethod
     def validate_file_content(cls, v: str) -> str:
         """Base64 dosya içeriğini doğrular."""
+        # Empty string için özel handling
+        if v == "":
+            raise ValueError("Geçersiz Base64 dosya içeriği")
+        
         try:
             # Base64 decode test
             decoded = base64.b64decode(v, validate=True)
-            if len(decoded) == 0:
-                raise ValueError("Dosya içeriği boş olamaz")
+            # Empty file'lar için izin ver (0 byte dosyalar geçerli olabilir)
             return v
         except Exception:
             raise ValueError("Geçersiz Base64 dosya içeriği")
@@ -605,9 +609,9 @@ class FileValidationConfig(BaseModel):
     def validate_file(self, attachment: Union[Attachment, AttachmentUploadRequest]) -> None:
         """Dosyayı validation kurallarına göre doğrular."""
         # Boyut kontrolü
-        if hasattr(attachment, 'size'):
+        if isinstance(attachment, Attachment):
             size = attachment.size
-        else:
+        else:  # AttachmentUploadRequest
             size = attachment.get_file_size()
         
         if size > self.max_file_size:
@@ -650,8 +654,12 @@ def create_file_upload_request(
     
     # MIME type detect et
     if mime_type is None:
-        mime_type, _ = mimetypes.guess_type(str(file_path))
-        if mime_type is None:
+        try:
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if mime_type is None:
+                mime_type = "application/octet-stream"
+        except (TypeError, ValueError):
+            # mimetypes.guess_type() bazen hata verebilir
             mime_type = "application/octet-stream"
     
     # Dosyayı base64'e encode et
@@ -663,7 +671,7 @@ def create_file_upload_request(
         type=mime_type,
         role=AttachmentRole.ATTACHMENT,
         file=file_content,
-        related_type=related_type,
+        relatedType=related_type,
         field=field
     )
 
@@ -681,8 +689,12 @@ def create_attachment_upload_request(
     
     # MIME type detect et
     if mime_type is None:
-        mime_type, _ = mimetypes.guess_type(str(file_path))
-        if mime_type is None:
+        try:
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if mime_type is None:
+                mime_type = "application/octet-stream"
+        except (TypeError, ValueError):
+            # mimetypes.guess_type() bazen hata verebilir
             mime_type = "application/octet-stream"
     
     # Dosyayı base64'e encode et
@@ -694,7 +706,7 @@ def create_attachment_upload_request(
         type=mime_type,
         role=AttachmentRole.ATTACHMENT,
         file=file_content,
-        parent_type=parent_type,
+        parentType=parent_type,
         field="attachments"
     )
 
@@ -706,11 +718,20 @@ def create_attachment_from_bytes(
 ) -> AttachmentUploadRequest:
     """Bytes veriden attachment upload request oluşturur."""
     if mime_type is None:
-        mime_type, _ = mimetypes.guess_type(filename)
-        if mime_type is None:
+        try:
+            mime_type, _ = mimetypes.guess_type(filename)
+            if mime_type is None:
+                mime_type = "application/octet-stream"
+        except (TypeError, ValueError):
+            # mimetypes.guess_type() bazen hata verebilir
             mime_type = "application/octet-stream"
     
-    file_content = base64.b64encode(file_data).decode("utf-8")
+    # Empty file için özel handling
+    if len(file_data) == 0:
+        # Empty file için minimal base64 content
+        file_content = base64.b64encode(b" ").decode("utf-8")  # Single space
+    else:
+        file_content = base64.b64encode(file_data).decode("utf-8")
     
     return AttachmentUploadRequest(
         name=filename,
@@ -718,6 +739,46 @@ def create_attachment_from_bytes(
         role=AttachmentRole.ATTACHMENT,
         file=file_content
     )
+
+
+class AttachmentInfo(BaseModel):
+    """Attachment bilgi modeli."""
+    
+    id: str = Field(
+        description="Attachment ID'si",
+        min_length=17,
+        max_length=17
+    )
+    
+    name: str = Field(
+        description="Dosya adı",
+        max_length=255
+    )
+    
+    type: str = Field(
+        description="MIME type",
+        max_length=255
+    )
+    
+    size: int = Field(
+        description="Dosya boyutu (bytes)",
+        ge=0
+    )
+    
+    url: Optional[str] = Field(
+        default=None,
+        description="Download URL'i"
+    )
+    
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Oluşturulma tarihi",
+        alias="createdAt"
+    )
+    
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
 # Export edilecek sınıflar ve fonksiyonlar
@@ -733,6 +794,7 @@ __all__ = [
     # Models
     "AttachmentMetadata",
     "Attachment",
+    "AttachmentInfo",
     "AttachmentUploadRequest",
     "AttachmentDownloadRequest",
     "BulkAttachmentUploadRequest",

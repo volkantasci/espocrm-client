@@ -8,7 +8,7 @@ HMAC-SHA256 signature ile güvenli authentication sağlar.
 import hashlib
 import hmac
 import base64
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 
 from .base import AuthenticationBase, AuthenticationError
@@ -52,7 +52,81 @@ class HMACAuthentication(AuthenticationBase):
                 auth_type="HMAC"
             )
         
+        # Validation
+        self._validate_api_key(api_key)
+        self._validate_secret_key(secret_key)
+        
         super().__init__(api_key=api_key, secret_key=secret_key, **kwargs)
+    
+    def _validate_api_key(self, api_key: str) -> None:
+        """
+        API key'in güvenlik gereksinimlerini kontrol eder.
+        
+        Args:
+            api_key: Kontrol edilecek API key
+            
+        Raises:
+            AuthenticationError: API key güvenlik gereksinimlerini karşılamazsa
+        """
+        # Minimum uzunluk kontrolü
+        if len(api_key.strip()) < 8:
+            raise AuthenticationError(
+                "API key must be at least 8 characters long",
+                auth_type="HMAC"
+            )
+        
+        # Maksimum uzunluk kontrolü
+        if len(api_key.strip()) > 255:
+            raise AuthenticationError(
+                "API key must be less than 255 characters",
+                auth_type="HMAC"
+            )
+        
+        # Karakter format kontrolü
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_\.]+$', api_key.strip()):
+            raise AuthenticationError(
+                "API key contains invalid characters. Only alphanumeric, dash, underscore and dot are allowed",
+                auth_type="HMAC"
+            )
+        
+        # Boşluk karakteri kontrolü
+        if ' ' in api_key or '\t' in api_key or '\n' in api_key:
+            raise AuthenticationError(
+                "API key cannot contain whitespace characters",
+                auth_type="HMAC"
+            )
+    
+    def _validate_secret_key(self, secret_key: str) -> None:
+        """
+        Secret key'in güvenlik gereksinimlerini kontrol eder.
+        
+        Args:
+            secret_key: Kontrol edilecek secret key
+            
+        Raises:
+            AuthenticationError: Secret key güvenlik gereksinimlerini karşılamazsa
+        """
+        # Minimum uzunluk kontrolü (HMAC için daha güçlü gereksinim)
+        if len(secret_key.strip()) < 16:
+            raise AuthenticationError(
+                "Secret key must be at least 16 characters long for security",
+                auth_type="HMAC"
+            )
+        
+        # Maksimum uzunluk kontrolü
+        if len(secret_key.strip()) > 512:
+            raise AuthenticationError(
+                "Secret key must be less than 512 characters",
+                auth_type="HMAC"
+            )
+        
+        # Boşluk karakteri kontrolü
+        if ' ' in secret_key or '\t' in secret_key or '\n' in secret_key:
+            raise AuthenticationError(
+                "Secret key cannot contain whitespace characters",
+                auth_type="HMAC"
+            )
     
     def _setup_credentials(self, **kwargs: Any) -> None:
         """
@@ -99,9 +173,8 @@ class HMACAuthentication(AuthenticationBase):
         """
         try:
             # EspoCRM format: method + ' /' + uri
-            # URI'nin başında '/' yoksa ekle
-            if not uri.startswith('/'):
-                uri = '/' + uri
+            # URI'yi normalize et - başında '/' olmalı
+            uri = '/' + uri.lstrip('/')
             
             # Signature string'i oluştur
             signature_string = f"{method.upper()} {uri}"
@@ -220,7 +293,7 @@ class HMACAuthentication(AuthenticationBase):
             "secret_key": self._mask_sensitive_data(self._credentials["secret_key"])
         }
     
-    def rotate_credentials(self, new_api_key: str = None, new_secret_key: str = None) -> None:
+    def rotate_credentials(self, new_api_key: Optional[str] = None, new_secret_key: Optional[str] = None) -> None:
         """
         API key ve/veya secret key'i yenisi ile değiştirir.
         

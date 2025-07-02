@@ -34,10 +34,10 @@ class BasicAuthentication(AuthenticationBase):
     """
     
     def __init__(
-        self, 
-        username: str, 
-        password: str = None, 
-        token: str = None,
+        self,
+        username: str,
+        password: Optional[str] = None,
+        token: Optional[str] = None,
         use_espo_header: bool = False,
         **kwargs: Any
     ) -> None:
@@ -72,6 +72,13 @@ class BasicAuthentication(AuthenticationBase):
                 auth_type="Basic"
             )
         
+        # Validation
+        self._validate_username(username)
+        if password:
+            self._validate_password(password)
+        if token:
+            self._validate_token(token)
+        
         super().__init__(
             username=username,
             password=password,
@@ -79,6 +86,107 @@ class BasicAuthentication(AuthenticationBase):
             use_espo_header=use_espo_header,
             **kwargs
         )
+    
+    def _validate_username(self, username: str) -> None:
+        """
+        Username'in güvenlik gereksinimlerini kontrol eder.
+        
+        Args:
+            username: Kontrol edilecek username
+            
+        Raises:
+            AuthenticationError: Username güvenlik gereksinimlerini karşılamazsa
+        """
+        # Minimum uzunluk kontrolü
+        if len(username.strip()) < 3:
+            raise AuthenticationError(
+                "Username must be at least 3 characters long",
+                auth_type="Basic"
+            )
+        
+        # Maksimum uzunluk kontrolü
+        if len(username.strip()) > 100:
+            raise AuthenticationError(
+                "Username must be less than 100 characters",
+                auth_type="Basic"
+            )
+        
+        # Boşluk karakteri kontrolü
+        if ' ' in username or '\t' in username or '\n' in username:
+            raise AuthenticationError(
+                "Username cannot contain whitespace characters",
+                auth_type="Basic"
+            )
+    
+    def _validate_password(self, password: str) -> None:
+        """
+        Password'ün güvenlik gereksinimlerini kontrol eder.
+        
+        Args:
+            password: Kontrol edilecek password
+            
+        Raises:
+            AuthenticationError: Password güvenlik gereksinimlerini karşılamazsa
+        """
+        # Minimum uzunluk kontrolü
+        if len(password) < 6:
+            raise AuthenticationError(
+                "Password must be at least 6 characters long",
+                auth_type="Basic"
+            )
+        
+        # Maksimum uzunluk kontrolü
+        if len(password) > 255:
+            raise AuthenticationError(
+                "Password must be less than 255 characters",
+                auth_type="Basic"
+            )
+        
+        # Zayıf password kontrolü
+        weak_passwords = ["123", "password", "abc", "pass", "admin", "user", "test"]
+        if password.lower() in weak_passwords:
+            raise AuthenticationError(
+                "Password is too weak. Please use a stronger password",
+                auth_type="Basic"
+            )
+        
+        # Sadece sayı kontrolü
+        if password.isdigit():
+            raise AuthenticationError(
+                "Password cannot contain only numbers",
+                auth_type="Basic"
+            )
+    
+    def _validate_token(self, token: str) -> None:
+        """
+        Token'ın güvenlik gereksinimlerini kontrol eder.
+        
+        Args:
+            token: Kontrol edilecek token
+            
+        Raises:
+            AuthenticationError: Token güvenlik gereksinimlerini karşılamazsa
+        """
+        # Minimum uzunluk kontrolü
+        if len(token.strip()) < 8:
+            raise AuthenticationError(
+                "Token must be at least 8 characters long",
+                auth_type="Basic"
+            )
+        
+        # Maksimum uzunluk kontrolü
+        if len(token.strip()) > 512:
+            raise AuthenticationError(
+                "Token must be less than 512 characters",
+                auth_type="Basic"
+            )
+        
+        # Boşluk karakteri kontrolü
+        if ' ' in token or '\t' in token or '\n' in token:
+            raise AuthenticationError(
+                "Token cannot contain whitespace characters",
+                auth_type="Basic"
+            )
     
     def _setup_credentials(self, **kwargs: Any) -> None:
         """

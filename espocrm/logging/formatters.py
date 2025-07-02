@@ -518,3 +518,262 @@ def create_console_formatter(
             exclude_fields=exclude_fields,
             include_fields=include_fields
         )
+
+
+class StructuredFormatter(BaseFormatter):
+    """
+    Structured formatter for key-value pair output
+    
+    Produces structured logs in key=value format suitable for:
+    - Log parsing tools
+    - Grep-friendly searching
+    - Human-readable structured data
+    """
+    
+    def __init__(
+        self,
+        separator: str = " ",
+        key_value_separator: str = "=",
+        quote_values: bool = True,
+        exclude_fields: Optional[Set[str]] = None,
+        include_fields: Optional[Set[str]] = None
+    ):
+        """
+        Initialize structured formatter
+        
+        Args:
+            separator: Separator between key-value pairs
+            key_value_separator: Separator between key and value
+            quote_values: Quote string values
+            exclude_fields: Fields to exclude from output
+            include_fields: Fields to include in output
+        """
+        super().__init__(
+            exclude_fields=exclude_fields,
+            include_fields=include_fields
+        )
+        self.separator = separator
+        self.key_value_separator = key_value_separator
+        self.quote_values = quote_values
+        
+        # Default excluded fields for structured format
+        default_excludes = {
+            'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
+            'filename', 'module', 'lineno', 'funcName', 'created',
+            'msecs', 'relativeCreated', 'thread', 'threadName',
+            'processName', 'process', 'getMessage', 'exc_info',
+            'exc_text', 'stack_info'
+        }
+        self.exclude_fields.update(default_excludes)
+    
+    def format(self, record: LogRecord) -> str:
+        """
+        Format log record as structured key-value pairs
+        
+        Args:
+            record: Log record
+            
+        Returns:
+            Structured formatted string
+        """
+        # Start with basic log structure
+        parts = [
+            f"timestamp{self.key_value_separator}{self.format_timestamp(record.created)}",
+            f"level{self.key_value_separator}{record.levelname}",
+            f"logger{self.key_value_separator}{record.name}",
+            f"message{self.key_value_separator}{self._format_value(record.getMessage())}"
+        ]
+        
+        # Add custom fields from record
+        record_dict = record.__dict__.copy()
+        
+        # Process structlog event_dict if present
+        if hasattr(record, 'event_dict'):
+            event_dict = record.event_dict
+            if isinstance(event_dict, dict):
+                record_dict.update(event_dict)
+        
+        # Filter and add custom fields
+        filtered_fields = self.filter_fields(record_dict)
+        
+        for key, value in filtered_fields.items():
+            if not key.startswith('_'):
+                formatted_value = self._format_value(value)
+                parts.append(f"{key}{self.key_value_separator}{formatted_value}")
+        
+        # Add exception info if present
+        if record.exc_info:
+            exc_str = self.formatException(record.exc_info).replace('\n', '\\n')
+            parts.append(f"exception{self.key_value_separator}{self._format_value(exc_str)}")
+        
+        return self.separator.join(parts)
+    
+    def _format_value(self, value: Any) -> str:
+        """
+        Format value for structured output
+        
+        Args:
+            value: Value to format
+            
+        Returns:
+            Formatted string
+        """
+        if value is None:
+            return "null"
+        elif isinstance(value, bool):
+            return str(value).lower()
+        elif isinstance(value, (int, float)):
+            return str(value)
+        elif isinstance(value, str):
+            if self.quote_values and (' ' in value or self.separator in value or self.key_value_separator in value):
+                return f'"{value}"'
+            return value
+        elif isinstance(value, (list, tuple)):
+            items = [self._format_value(item) for item in value]
+            return f"[{','.join(items)}]"
+        elif isinstance(value, dict):
+            items = [f"{k}:{self._format_value(v)}" for k, v in value.items()]
+            return f"{{{','.join(items)}}}"
+        else:
+            str_value = str(value)
+            if self.quote_values and (' ' in str_value or self.separator in str_value or self.key_value_separator in str_value):
+                return f'"{str_value}"'
+            return str_value
+
+
+class ColoredFormatter(ConsoleFormatter):
+    """
+    Colored formatter with enhanced color support
+    
+    Extends ConsoleFormatter with additional color features:
+    - Level-specific colors
+    - Field highlighting
+    - Error emphasis
+    - Custom color schemes
+    """
+    
+    # Extended color palette
+    EXTENDED_COLORS = {
+        'DEBUG': '\033[36m',      # Cyan
+        'INFO': '\033[32m',       # Green
+        'WARNING': '\033[33m',    # Yellow
+        'ERROR': '\033[31m',      # Red
+        'CRITICAL': '\033[35m',   # Magenta
+        'RESET': '\033[0m',       # Reset
+        'BOLD': '\033[1m',        # Bold
+        'DIM': '\033[2m',         # Dim
+        'UNDERLINE': '\033[4m',   # Underline
+        'BLINK': '\033[5m',       # Blink
+        'REVERSE': '\033[7m',     # Reverse
+        'STRIKETHROUGH': '\033[9m', # Strikethrough
+        # Background colors
+        'BG_BLACK': '\033[40m',
+        'BG_RED': '\033[41m',
+        'BG_GREEN': '\033[42m',
+        'BG_YELLOW': '\033[43m',
+        'BG_BLUE': '\033[44m',
+        'BG_MAGENTA': '\033[45m',
+        'BG_CYAN': '\033[46m',
+        'BG_WHITE': '\033[47m',
+        # Bright colors
+        'BRIGHT_BLACK': '\033[90m',
+        'BRIGHT_RED': '\033[91m',
+        'BRIGHT_GREEN': '\033[92m',
+        'BRIGHT_YELLOW': '\033[93m',
+        'BRIGHT_BLUE': '\033[94m',
+        'BRIGHT_MAGENTA': '\033[95m',
+        'BRIGHT_CYAN': '\033[96m',
+        'BRIGHT_WHITE': '\033[97m',
+    }
+    
+    def __init__(
+        self,
+        color_scheme: Optional[Dict[str, str]] = None,
+        highlight_fields: Optional[Set[str]] = None,
+        **kwargs
+    ):
+        """
+        Initialize colored formatter
+        
+        Args:
+            color_scheme: Custom color scheme mapping
+            highlight_fields: Fields to highlight with special colors
+            **kwargs: Additional arguments for ConsoleFormatter
+        """
+        super().__init__(**kwargs)
+        
+        # Merge extended colors
+        self.COLORS.update(self.EXTENDED_COLORS)
+        
+        # Apply custom color scheme
+        if color_scheme:
+            self.COLORS.update(color_scheme)
+        
+        self.highlight_fields = highlight_fields or {'error', 'exception', 'user_id', 'request_id'}
+    
+    def format(self, record: LogRecord) -> str:
+        """
+        Format log record with enhanced colors
+        
+        Args:
+            record: Log record
+            
+        Returns:
+            Colored formatted string
+        """
+        if not self.use_colors:
+            return super().format(record)
+        
+        # Get base formatted output
+        formatted = super().format(record)
+        
+        # Apply level-specific background for critical errors
+        if record.levelname == 'CRITICAL':
+            formatted = f"{self.COLORS['BG_RED']}{self.COLORS['BRIGHT_WHITE']}{formatted}{self.COLORS['RESET']}"
+        elif record.levelname == 'ERROR':
+            # Make errors more prominent
+            formatted = f"{self.COLORS['BOLD']}{formatted}{self.COLORS['RESET']}"
+        
+        return formatted
+    
+    def _format_dict(self, data: Dict[str, Any], prefix: str = "") -> str:
+        """
+        Format dictionary with field highlighting
+        
+        Args:
+            data: Dictionary to format
+            prefix: Line prefix
+            
+        Returns:
+            Formatted string with colors
+        """
+        if not data:
+            return ""
+        
+        lines = []
+        for key, value in data.items():
+            value_str = self._format_value(value)
+            
+            # Highlight special fields
+            if self.use_colors and key.lower() in self.highlight_fields:
+                key_colored = f"{self.COLORS['BOLD']}{self.COLORS['BRIGHT_YELLOW']}{key}{self.COLORS['RESET']}"
+                value_colored = f"{self.COLORS['BRIGHT_CYAN']}{value_str}{self.COLORS['RESET']}"
+                lines.append(f"{prefix}{key_colored}={value_colored}")
+            else:
+                lines.append(f"{prefix}{key}={value_str}")
+        
+        return '\n'.join(lines)
+
+
+# Update __all__ to include new formatters
+__all__ = [
+    "BaseFormatter",
+    "JSONFormatter",
+    "ConsoleFormatter",
+    "StructuredFormatter",
+    "ColoredFormatter",
+    "CompactJSONFormatter",
+    "DebugFormatter",
+    "create_json_formatter",
+    "create_console_formatter",
+]

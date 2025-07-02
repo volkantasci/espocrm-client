@@ -74,10 +74,7 @@ class WhereClause(BaseModel):
     
     type: WhereOperator = Field(description="Where operatörü")
     attribute: Optional[str] = Field(default=None, description="Field adı")
-    value: Optional[Union[str, int, float, bool, List[Any], Dict[str, Any]]] = Field(
-        default=None, 
-        description="Karşılaştırma değeri"
-    )
+    value: Optional[Any] = Field(default=None, description="Karşılaştırma değeri")
     
     model_config = {
         "extra": "allow",
@@ -105,173 +102,8 @@ class WhereClause(BaseModel):
         return self
 
 
-class EqualsClause(WhereClause):
-    """Eşitlik kontrolü için where clause."""
-    type: Literal[WhereOperator.EQUALS] = WhereOperator.EQUALS
-    attribute: str
-    value: Union[str, int, float, bool]
-
-
-class NotEqualsClause(WhereClause):
-    """Eşitsizlik kontrolü için where clause."""
-    type: Literal[WhereOperator.NOT_EQUALS] = WhereOperator.NOT_EQUALS
-    attribute: str
-    value: Union[str, int, float, bool]
-
-
-class GreaterThanClause(WhereClause):
-    """Büyüktür kontrolü için where clause."""
-    type: Literal[WhereOperator.GREATER_THAN] = WhereOperator.GREATER_THAN
-    attribute: str
-    value: Union[str, int, float, datetime, date]
-
-
-class LessThanClause(WhereClause):
-    """Küçüktür kontrolü için where clause."""
-    type: Literal[WhereOperator.LESS_THAN] = WhereOperator.LESS_THAN
-    attribute: str
-    value: Union[str, int, float, datetime, date]
-
-
-class GreaterThanOrEqualClause(WhereClause):
-    """Büyük eşit kontrolü için where clause."""
-    type: Literal[WhereOperator.GREATER_THAN_OR_EQUAL] = WhereOperator.GREATER_THAN_OR_EQUAL
-    attribute: str
-    value: Union[str, int, float, datetime, date]
-
-
-class LessThanOrEqualClause(WhereClause):
-    """Küçük eşit kontrolü için where clause."""
-    type: Literal[WhereOperator.LESS_THAN_OR_EQUAL] = WhereOperator.LESS_THAN_OR_EQUAL
-    attribute: str
-    value: Union[str, int, float, datetime, date]
-
-
-class IsNullClause(WhereClause):
-    """Null kontrolü için where clause."""
-    type: Literal[WhereOperator.IS_NULL] = WhereOperator.IS_NULL
-    attribute: str
-    value: Optional[Any] = None
-
-
-class IsNotNullClause(WhereClause):
-    """Not null kontrolü için where clause."""
-    type: Literal[WhereOperator.IS_NOT_NULL] = WhereOperator.IS_NOT_NULL
-    attribute: str
-    value: Optional[Any] = None
-
-
-class InClause(WhereClause):
-    """Liste içinde kontrolü için where clause."""
-    type: Literal[WhereOperator.IN] = WhereOperator.IN
-    attribute: str
-    value: List[Union[str, int, float]]
-
-
-class NotInClause(WhereClause):
-    """Liste dışında kontrolü için where clause."""
-    type: Literal[WhereOperator.NOT_IN] = WhereOperator.NOT_IN
-    attribute: str
-    value: List[Union[str, int, float]]
-
-
-class ContainsClause(WhereClause):
-    """İçerir kontrolü için where clause."""
-    type: Literal[WhereOperator.CONTAINS] = WhereOperator.CONTAINS
-    attribute: str
-    value: str
-
-
-class NotContainsClause(WhereClause):
-    """İçermez kontrolü için where clause."""
-    type: Literal[WhereOperator.NOT_CONTAINS] = WhereOperator.NOT_CONTAINS
-    attribute: str
-    value: str
-
-
-class StartsWithClause(WhereClause):
-    """Başlar kontrolü için where clause."""
-    type: Literal[WhereOperator.STARTS_WITH] = WhereOperator.STARTS_WITH
-    attribute: str
-    value: str
-
-
-class EndsWithClause(WhereClause):
-    """Biter kontrolü için where clause."""
-    type: Literal[WhereOperator.ENDS_WITH] = WhereOperator.ENDS_WITH
-    attribute: str
-    value: str
-
-
-class LikeClause(WhereClause):
-    """Like kontrolü için where clause."""
-    type: Literal[WhereOperator.LIKE] = WhereOperator.LIKE
-    attribute: str
-    value: str
-
-
-class NotLikeClause(WhereClause):
-    """Not like kontrolü için where clause."""
-    type: Literal[WhereOperator.NOT_LIKE] = WhereOperator.NOT_LIKE
-    attribute: str
-    value: str
-
-
-class BetweenClause(WhereClause):
-    """Aralık kontrolü için where clause."""
-    type: Literal[WhereOperator.BETWEEN] = WhereOperator.BETWEEN
-    attribute: str
-    value: List[Union[str, int, float, datetime, date]]
-    
-    @field_validator('value')
-    @classmethod
-    def validate_between_value(cls, v):
-        """Between değerinin 2 elemanlı liste olduğunu doğrular."""
-        if not isinstance(v, list) or len(v) != 2:
-            raise ValueError("Between operatörü için value 2 elemanlı liste olmalıdır")
-        return v
-
-
-class TodayClause(WhereClause):
-    """Bugün kontrolü için where clause."""
-    type: Literal[WhereOperator.TODAY] = WhereOperator.TODAY
-    attribute: str
-    value: Optional[Any] = None
-
-
-class PastClause(WhereClause):
-    """Geçmiş kontrolü için where clause."""
-    type: Literal[WhereOperator.PAST] = WhereOperator.PAST
-    attribute: str
-    value: Optional[Any] = None
-
-
-class FutureClause(WhereClause):
-    """Gelecek kontrolü için where clause."""
-    type: Literal[WhereOperator.FUTURE] = WhereOperator.FUTURE
-    attribute: str
-    value: Optional[Any] = None
-
-
-class OrClause(WhereClause):
-    """OR mantıksal operatörü için where clause."""
-    type: Literal[WhereOperator.OR] = WhereOperator.OR
-    attribute: Optional[str] = None
-    value: List[Dict[str, Any]]
-
-
-class AndClause(WhereClause):
-    """AND mantıksal operatörü için where clause."""
-    type: Literal[WhereOperator.AND] = WhereOperator.AND
-    attribute: Optional[str] = None
-    value: List[Dict[str, Any]]
-
-
-class NotClause(WhereClause):
-    """NOT mantıksal operatörü için where clause."""
-    type: Literal[WhereOperator.NOT] = WhereOperator.NOT
-    attribute: Optional[str] = None
-    value: Dict[str, Any]
+# Specific clause types removed to avoid Pydantic inheritance issues
+# Use WhereClause directly with appropriate type, attribute, and value
 
 
 class OrderBy(BaseModel):
@@ -394,78 +226,78 @@ class SearchParams(BaseModel):
     
     def add_equals(self, field: str, value: Union[str, int, float, bool]) -> "SearchParams":
         """Eşitlik kontrolü ekler."""
-        clause = EqualsClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.EQUALS, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_not_equals(self, field: str, value: Union[str, int, float, bool]) -> "SearchParams":
         """Eşitsizlik kontrolü ekler."""
-        clause = NotEqualsClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.NOT_EQUALS, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_greater_than(self, field: str, value: Union[str, int, float, datetime, date]) -> "SearchParams":
         """Büyüktür kontrolü ekler."""
-        clause = GreaterThanClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.GREATER_THAN, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_less_than(self, field: str, value: Union[str, int, float, datetime, date]) -> "SearchParams":
         """Küçüktür kontrolü ekler."""
-        clause = LessThanClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.LESS_THAN, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_in(self, field: str, values: List[Union[str, int, float]]) -> "SearchParams":
         """Liste içinde kontrolü ekler."""
-        clause = InClause(attribute=field, value=values)
+        clause = WhereClause(type=WhereOperator.IN, attribute=field, value=values)
         return self.add_where_clause(clause)
     
     def add_not_in(self, field: str, values: List[Union[str, int, float]]) -> "SearchParams":
         """Liste dışında kontrolü ekler."""
-        clause = NotInClause(attribute=field, value=values)
+        clause = WhereClause(type=WhereOperator.NOT_IN, attribute=field, value=values)
         return self.add_where_clause(clause)
     
     def add_contains(self, field: str, value: str) -> "SearchParams":
         """İçerir kontrolü ekler."""
-        clause = ContainsClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.CONTAINS, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_starts_with(self, field: str, value: str) -> "SearchParams":
         """Başlar kontrolü ekler."""
-        clause = StartsWithClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.STARTS_WITH, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_ends_with(self, field: str, value: str) -> "SearchParams":
         """Biter kontrolü ekler."""
-        clause = EndsWithClause(attribute=field, value=value)
+        clause = WhereClause(type=WhereOperator.ENDS_WITH, attribute=field, value=value)
         return self.add_where_clause(clause)
     
     def add_is_null(self, field: str) -> "SearchParams":
         """Null kontrolü ekler."""
-        clause = IsNullClause(attribute=field)
+        clause = WhereClause(type=WhereOperator.IS_NULL, attribute=field)
         return self.add_where_clause(clause)
     
     def add_is_not_null(self, field: str) -> "SearchParams":
         """Not null kontrolü ekler."""
-        clause = IsNotNullClause(attribute=field)
+        clause = WhereClause(type=WhereOperator.IS_NOT_NULL, attribute=field)
         return self.add_where_clause(clause)
     
-    def add_between(self, field: str, start: Union[str, int, float, datetime, date], 
+    def add_between(self, field: str, start: Union[str, int, float, datetime, date],
                    end: Union[str, int, float, datetime, date]) -> "SearchParams":
         """Aralık kontrolü ekler."""
-        clause = BetweenClause(attribute=field, value=[start, end])
+        clause = WhereClause(type=WhereOperator.BETWEEN, attribute=field, value=[start, end])
         return self.add_where_clause(clause)
     
     def add_today(self, field: str) -> "SearchParams":
         """Bugün kontrolü ekler."""
-        clause = TodayClause(attribute=field)
+        clause = WhereClause(type=WhereOperator.TODAY, attribute=field)
         return self.add_where_clause(clause)
     
     def add_past(self, field: str) -> "SearchParams":
         """Geçmiş kontrolü ekler."""
-        clause = PastClause(attribute=field)
+        clause = WhereClause(type=WhereOperator.PAST, attribute=field)
         return self.add_where_clause(clause)
     
     def add_future(self, field: str) -> "SearchParams":
         """Gelecek kontrolü ekler."""
-        clause = FutureClause(attribute=field)
+        clause = WhereClause(type=WhereOperator.FUTURE, attribute=field)
         return self.add_where_clause(clause)
     
     def set_order(self, field: str, direction: OrderDirection = OrderDirection.ASC) -> "SearchParams":
@@ -496,7 +328,11 @@ class SearchParams(BaseModel):
         # Ordering
         if self.order_by:
             params["orderBy"] = self.order_by
-            params["order"] = self.order.value
+            # order field'ı enum veya string olabilir
+            if isinstance(self.order, OrderDirection):
+                params["order"] = self.order.value
+            else:
+                params["order"] = str(self.order)
         
         # Selection
         if self.select:
@@ -504,9 +340,8 @@ class SearchParams(BaseModel):
         
         # Where clauses
         if self.where:
-            # EspoCRM where parametresi JSON array olarak gönderilir
-            import json
-            params["where"] = json.dumps(self.where)
+            # EspoCRM where parametresi doğrudan array olarak gönderilir
+            params["where"] = self.where
         
         return params
     
@@ -526,87 +361,87 @@ def create_search_params(
     """SearchParams oluşturur."""
     return SearchParams(
         offset=offset,
-        max_size=max_size,
-        order_by=order_by,
+        maxSize=max_size,
+        orderBy=order_by,
         order=order,
         select=select
     )
 
 
-def equals(field: str, value: Union[str, int, float, bool]) -> EqualsClause:
+def equals(field: str, value: Union[str, int, float, bool]) -> WhereClause:
     """Eşitlik clause'u oluşturur."""
-    return EqualsClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.EQUALS, attribute=field, value=value)
 
 
-def not_equals(field: str, value: Union[str, int, float, bool]) -> NotEqualsClause:
+def not_equals(field: str, value: Union[str, int, float, bool]) -> WhereClause:
     """Eşitsizlik clause'u oluşturur."""
-    return NotEqualsClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.NOT_EQUALS, attribute=field, value=value)
 
 
-def greater_than(field: str, value: Union[str, int, float, datetime, date]) -> GreaterThanClause:
+def greater_than(field: str, value: Union[str, int, float, datetime, date]) -> WhereClause:
     """Büyüktür clause'u oluşturur."""
-    return GreaterThanClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.GREATER_THAN, attribute=field, value=value)
 
 
-def less_than(field: str, value: Union[str, int, float, datetime, date]) -> LessThanClause:
+def less_than(field: str, value: Union[str, int, float, datetime, date]) -> WhereClause:
     """Küçüktür clause'u oluşturur."""
-    return LessThanClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.LESS_THAN, attribute=field, value=value)
 
 
-def in_list(field: str, values: List[Union[str, int, float]]) -> InClause:
+def in_list(field: str, values: List[Union[str, int, float]]) -> WhereClause:
     """Liste içinde clause'u oluşturur."""
-    return InClause(attribute=field, value=values)
+    return WhereClause(type=WhereOperator.IN, attribute=field, value=values)
 
 
-def not_in_list(field: str, values: List[Union[str, int, float]]) -> NotInClause:
+def not_in_list(field: str, values: List[Union[str, int, float]]) -> WhereClause:
     """Liste dışında clause'u oluşturur."""
-    return NotInClause(attribute=field, value=values)
+    return WhereClause(type=WhereOperator.NOT_IN, attribute=field, value=values)
 
 
-def contains(field: str, value: str) -> ContainsClause:
+def contains(field: str, value: str) -> WhereClause:
     """İçerir clause'u oluşturur."""
-    return ContainsClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.CONTAINS, attribute=field, value=value)
 
 
-def starts_with(field: str, value: str) -> StartsWithClause:
+def starts_with(field: str, value: str) -> WhereClause:
     """Başlar clause'u oluşturur."""
-    return StartsWithClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.STARTS_WITH, attribute=field, value=value)
 
 
-def ends_with(field: str, value: str) -> EndsWithClause:
+def ends_with(field: str, value: str) -> WhereClause:
     """Biter clause'u oluşturur."""
-    return EndsWithClause(attribute=field, value=value)
+    return WhereClause(type=WhereOperator.ENDS_WITH, attribute=field, value=value)
 
 
-def is_null(field: str) -> IsNullClause:
+def is_null(field: str) -> WhereClause:
     """Null clause'u oluşturur."""
-    return IsNullClause(attribute=field)
+    return WhereClause(type=WhereOperator.IS_NULL, attribute=field)
 
 
-def is_not_null(field: str) -> IsNotNullClause:
+def is_not_null(field: str) -> WhereClause:
     """Not null clause'u oluşturur."""
-    return IsNotNullClause(attribute=field)
+    return WhereClause(type=WhereOperator.IS_NOT_NULL, attribute=field)
 
 
-def between(field: str, start: Union[str, int, float, datetime, date], 
-           end: Union[str, int, float, datetime, date]) -> BetweenClause:
+def between(field: str, start: Union[str, int, float, datetime, date],
+           end: Union[str, int, float, datetime, date]) -> WhereClause:
     """Aralık clause'u oluşturur."""
-    return BetweenClause(attribute=field, value=[start, end])
+    return WhereClause(type=WhereOperator.BETWEEN, attribute=field, value=[start, end])
 
 
-def today(field: str) -> TodayClause:
+def today(field: str) -> WhereClause:
     """Bugün clause'u oluşturur."""
-    return TodayClause(attribute=field)
+    return WhereClause(type=WhereOperator.TODAY, attribute=field)
 
 
-def past(field: str) -> PastClause:
+def past(field: str) -> WhereClause:
     """Geçmiş clause'u oluşturur."""
-    return PastClause(attribute=field)
+    return WhereClause(type=WhereOperator.PAST, attribute=field)
 
 
-def future(field: str) -> FutureClause:
+def future(field: str) -> WhereClause:
     """Gelecek clause'u oluşturur."""
-    return FutureClause(attribute=field)
+    return WhereClause(type=WhereOperator.FUTURE, attribute=field)
 
 
 # Export edilecek sınıflar ve fonksiyonlar
@@ -621,31 +456,6 @@ __all__ = [
     "Pagination",
     "Select",
     "SearchParams",
-    
-    # Specific clause types
-    "EqualsClause",
-    "NotEqualsClause",
-    "GreaterThanClause",
-    "LessThanClause",
-    "GreaterThanOrEqualClause",
-    "LessThanOrEqualClause",
-    "IsNullClause",
-    "IsNotNullClause",
-    "InClause",
-    "NotInClause",
-    "ContainsClause",
-    "NotContainsClause",
-    "StartsWithClause",
-    "EndsWithClause",
-    "LikeClause",
-    "NotLikeClause",
-    "BetweenClause",
-    "TodayClause",
-    "PastClause",
-    "FutureClause",
-    "OrClause",
-    "AndClause",
-    "NotClause",
     
     # Convenience functions
     "create_search_params",
