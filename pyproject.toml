@@ -1,0 +1,230 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "espocrm-python-client"
+version = "0.1.0"
+description = "Modern, type-safe and comprehensive EspoCRM API client library for Python"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "EspoCRM Python Client Team", email = "support@espocrm-python-client.com"}
+]
+maintainers = [
+    {name = "EspoCRM Python Client Team", email = "support@espocrm-python-client.com"}
+]
+keywords = [
+    "espocrm",
+    "api",
+    "client",
+    "crm",
+    "rest",
+    "api-client",
+    "customer-relationship-management",
+    "business-automation",
+    "sales-management",
+    "lead-management",
+    "contact-management",
+    "opportunity-management",
+    "type-safe",
+    "pydantic",
+    "structured-logging"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Office/Business",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Database",
+    "Topic :: Communications",
+    "Typing :: Typed",
+    "Framework :: Pydantic",
+    "Environment :: Web Environment",
+    "Natural Language :: English",
+    "Natural Language :: Turkish",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.31.0,<3.0.0",
+    "pydantic>=2.5.0,<3.0.0",
+    "structlog>=23.2.0,<25.0.0",
+    "typing-extensions>=4.8.0; python_version<'3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.5.0",
+    "flake8>=6.0.0",
+    "bandit>=1.7.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+async = [
+    "httpx>=0.25.0",
+    "aiofiles>=23.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/espocrm/espocrm-python-client"
+Documentation = "https://espocrm-python-client.readthedocs.io"
+Repository = "https://github.com/espocrm/espocrm-python-client.git"
+Issues = "https://github.com/espocrm/espocrm-python-client/issues"
+Changelog = "https://github.com/espocrm/espocrm-python-client/blob/main/CHANGELOG.md"
+"Bug Reports" = "https://github.com/espocrm/espocrm-python-client/issues"
+"Feature Requests" = "https://github.com/espocrm/espocrm-python-client/issues/new?template=feature_request.md"
+"Source Code" = "https://github.com/espocrm/espocrm-python-client"
+"Download" = "https://pypi.org/project/espocrm-python-client/"
+"Funding" = "https://github.com/sponsors/espocrm"
+
+[project.scripts]
+espocrm-cli = "espocrm.cli:main"
+
+[project.entry-points."espocrm.auth"]
+api_key = "espocrm.auth.api_key:APIKeyAuth"
+basic = "espocrm.auth.basic:BasicAuth"
+hmac = "espocrm.auth.hmac:HMACAuth"
+
+[project.entry-points."espocrm.clients"]
+crud = "espocrm.clients.crud:CrudClient"
+metadata = "espocrm.clients.metadata:MetadataClient"
+relationships = "espocrm.clients.relationships:RelationshipClient"
+stream = "espocrm.clients.stream:StreamClient"
+attachments = "espocrm.clients.attachments:AttachmentClient"
+
+[tool.setuptools.packages.find]
+include = ["espocrm*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+espocrm = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["espocrm"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=espocrm",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=90",
+    "--tb=short",
+]
+testpaths = ["tests"]
+markers = [
+    "unit: Unit tests - isolated component testing",
+    "integration: Integration tests - component interaction testing",
+    "performance: Performance tests - speed and resource usage",
+    "security: Security tests - vulnerability and safety testing",
+    "slow: Slow running tests - tests that take significant time",
+    "auth: Authentication tests - all authentication methods",
+    "crud: CRUD operation tests - create, read, update, delete",
+    "metadata: Metadata tests - schema and validation testing",
+    "relationships: Relationship tests - entity linking and associations",
+    "stream: Stream tests - activity stream functionality",
+    "attachments: Attachment tests - file upload and management",
+    "logging: Logging tests - structured logging and metrics",
+    "validation: Validation tests - data validation and constraints",
+    "error_handling: Error handling tests - exception scenarios",
+    "edge_cases: Edge case tests - boundary conditions and unusual inputs",
+    "parametrize: Parametrized tests - multiple input scenarios",
+]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*", "*Test", "*Tests"]
+python_functions = ["test_*"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["espocrm"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B601"]

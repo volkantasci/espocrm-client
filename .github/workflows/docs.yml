@@ -1,0 +1,690 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'espocrm/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'espocrm/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+  repository_dispatch:
+    types: [docs-update]
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: 1
+  FORCE_COLOR: 1
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for git info
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-docs-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-docs-
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[docs,dev]"
+
+    - name: Generate API documentation
+      run: |
+        # Create API reference documentation
+        mkdir -p docs/api
+        python -c "
+        import espocrm
+        import inspect
+        import os
+        
+        def generate_module_docs(module, path):
+            '''Generate documentation for a module'''
+            module_name = module.__name__
+            doc_path = os.path.join(path, f'{module_name.split(\".\")[-1]}.md')
+            
+            with open(doc_path, 'w') as f:
+                f.write(f'# {module_name}\\n\\n')
+                if module.__doc__:
+                    f.write(f'{module.__doc__}\\n\\n')
+                
+                # Get all public classes and functions
+                members = inspect.getmembers(module)
+                classes = [m for m in members if inspect.isclass(m[1]) and not m[0].startswith('_')]
+                functions = [m for m in members if inspect.isfunction(m[1]) and not m[0].startswith('_')]
+                
+                if classes:
+                    f.write('## Classes\\n\\n')
+                    for name, cls in classes:
+                        f.write(f'### {name}\\n\\n')
+                        if cls.__doc__:
+                            f.write(f'{cls.__doc__}\\n\\n')
+                
+                if functions:
+                    f.write('## Functions\\n\\n')
+                    for name, func in functions:
+                        f.write(f'### {name}\\n\\n')
+                        if func.__doc__:
+                            f.write(f'{func.__doc__}\\n\\n')
+        
+        # Generate docs for main modules
+        import espocrm.client
+        import espocrm.auth
+        import espocrm.models
+        import espocrm.exceptions
+        
+        generate_module_docs(espocrm.client, 'docs/api')
+        generate_module_docs(espocrm.auth, 'docs/api')
+        generate_module_docs(espocrm.models, 'docs/api')
+        generate_module_docs(espocrm.exceptions, 'docs/api')
+        "
+
+    - name: Create mkdocs.yml if not exists
+      run: |
+        if [ ! -f mkdocs.yml ]; then
+          cat > mkdocs.yml << 'EOF'
+        site_name: EspoCRM Python Client
+        site_description: Modern, type-safe and comprehensive EspoCRM API client library
+        site_url: https://espocrm-python-client.readthedocs.io
+        repo_url: https://github.com/espocrm/espocrm-python-client
+        repo_name: espocrm/espocrm-python-client
+        
+        theme:
+          name: material
+          palette:
+            - scheme: default
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-7
+                name: Switch to dark mode
+            - scheme: slate
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-4
+                name: Switch to light mode
+          features:
+            - navigation.tabs
+            - navigation.sections
+            - navigation.expand
+            - navigation.top
+            - search.highlight
+            - search.share
+            - content.code.copy
+        
+        nav:
+          - Home: index.md
+          - Installation: installation.md
+          - Quick Start: quickstart.md
+          - Authentication: authentication.md
+          - API Reference:
+            - CRUD Operations: crud.md
+            - Relationships: relationships.md
+            - Metadata: metadata.md
+            - Stream: stream.md
+            - Logging: logging.md
+          - Examples: examples.md
+          - CLI Tool: cli.md
+          - Contributing: contributing.md
+          - Changelog: changelog.md
+        
+        plugins:
+          - search
+          - mkdocstrings:
+              handlers:
+                python:
+                  options:
+                    docstring_style: google
+                    show_source: true
+                    show_root_heading: true
+                    show_root_toc_entry: false
+        
+        markdown_extensions:
+          - admonition
+          - pymdownx.details
+          - pymdownx.superfences
+          - pymdownx.highlight:
+              anchor_linenums: true
+          - pymdownx.inlinehilite
+          - pymdownx.snippets
+          - pymdownx.tabbed:
+              alternate_style: true
+          - toc:
+              permalink: true
+        EOF
+        fi
+
+    - name: Create missing documentation files
+      run: |
+        # Create installation.md
+        if [ ! -f docs/installation.md ]; then
+          cat > docs/installation.md << 'EOF'
+        # Installation
+        
+        ## Requirements
+        
+        - Python 3.8 or higher
+        - EspoCRM instance with API access
+        
+        ## Install from PyPI
+        
+        ```bash
+        pip install espocrm-python-client
+        ```
+        
+        ## Install from Source
+        
+        ```bash
+        git clone https://github.com/espocrm/espocrm-python-client.git
+        cd espocrm-python-client
+        pip install -e .
+        ```
+        
+        ## Development Installation
+        
+        ```bash
+        git clone https://github.com/espocrm/espocrm-python-client.git
+        cd espocrm-python-client
+        pip install -e ".[dev]"
+        ```
+        
+        ## Optional Dependencies
+        
+        ### Async Support
+        ```bash
+        pip install espocrm-python-client[async]
+        ```
+        
+        ### Documentation
+        ```bash
+        pip install espocrm-python-client[docs]
+        ```
+        
+        ### Development Tools
+        ```bash
+        pip install espocrm-python-client[dev]
+        ```
+        EOF
+        fi
+        
+        # Create quickstart.md
+        if [ ! -f docs/quickstart.md ]; then
+          cat > docs/quickstart.md << 'EOF'
+        # Quick Start
+        
+        ## Basic Usage
+        
+        ```python
+        from espocrm import EspoCRMClient
+        from espocrm.auth import APIKeyAuth
+        
+        # Initialize client
+        auth = APIKeyAuth("your-api-key")
+        client = EspoCRMClient("https://your-espocrm.com", auth)
+        
+        # Create a record
+        lead_data = {
+            "firstName": "John",
+            "lastName": "Doe",
+            "emailAddress": "john.doe@example.com"
+        }
+        lead = client.crud.create("Lead", lead_data)
+        print(f"Created Lead: {lead.id}")
+        
+        # List records
+        leads = client.crud.list("Lead", limit=10)
+        for lead in leads.records:
+            print(f"Lead: {lead.firstName} {lead.lastName}")
+        
+        # Update record
+        client.crud.update("Lead", lead.id, {"status": "Qualified"})
+        
+        # Delete record
+        client.crud.delete("Lead", lead.id)
+        ```
+        
+        ## Authentication Methods
+        
+        ### API Key Authentication
+        ```python
+        from espocrm.auth import APIKeyAuth
+        auth = APIKeyAuth("your-api-key")
+        ```
+        
+        ### Basic Authentication
+        ```python
+        from espocrm.auth import BasicAuth
+        auth = BasicAuth("username", "password")
+        ```
+        
+        ### HMAC Authentication
+        ```python
+        from espocrm.auth import HMACAuth
+        auth = HMACAuth("api-key", "secret-key")
+        ```
+        EOF
+        fi
+        
+        # Create authentication.md
+        if [ ! -f docs/authentication.md ]; then
+          cat > docs/authentication.md << 'EOF'
+        # Authentication
+        
+        EspoCRM Python Client supports multiple authentication methods.
+        
+        ## API Key Authentication
+        
+        The recommended method for production applications.
+        
+        ```python
+        from espocrm.auth import APIKeyAuth
+        
+        auth = APIKeyAuth("your-api-key")
+        client = EspoCRMClient("https://your-espocrm.com", auth)
+        ```
+        
+        ## Basic Authentication
+        
+        Username and password authentication.
+        
+        ```python
+        from espocrm.auth import BasicAuth
+        
+        auth = BasicAuth("username", "password")
+        client = EspoCRMClient("https://your-espocrm.com", auth)
+        ```
+        
+        ## HMAC Authentication
+        
+        HMAC-SHA256 authentication for enhanced security.
+        
+        ```python
+        from espocrm.auth import HMACAuth
+        
+        auth = HMACAuth("api-key", "secret-key")
+        client = EspoCRMClient("https://your-espocrm.com", auth)
+        ```
+        
+        ## Environment Variables
+        
+        You can also configure authentication using environment variables:
+        
+        ```bash
+        export ESPOCRM_URL="https://your-espocrm.com"
+        export ESPOCRM_API_KEY="your-api-key"
+        ```
+        
+        ```python
+        from espocrm import create_client
+        
+        # Automatically uses environment variables
+        client = create_client()
+        ```
+        EOF
+        fi
+        
+        # Create examples.md
+        if [ ! -f docs/examples.md ]; then
+          cat > docs/examples.md << 'EOF'
+        # Examples
+        
+        ## CRUD Operations
+        
+        ### Creating Records
+        ```python
+        # Create a Lead
+        lead_data = {
+            "firstName": "John",
+            "lastName": "Doe",
+            "emailAddress": "john@example.com",
+            "phone": "+1234567890"
+        }
+        lead = client.crud.create("Lead", lead_data)
+        ```
+        
+        ### Reading Records
+        ```python
+        # Get a specific record
+        lead = client.crud.get("Lead", "lead-id")
+        
+        # List records with pagination
+        leads = client.crud.list("Lead", limit=20, offset=0)
+        ```
+        
+        ### Updating Records
+        ```python
+        # Update a record
+        updates = {"status": "Qualified", "source": "Website"}
+        client.crud.update("Lead", "lead-id", updates)
+        ```
+        
+        ### Deleting Records
+        ```python
+        # Delete a record
+        client.crud.delete("Lead", "lead-id")
+        ```
+        
+        ## Advanced Search
+        
+        ```python
+        from espocrm.models import SearchParams, WhereClause
+        
+        search_params = SearchParams(
+            where=[
+                WhereClause(type="equals", attribute="status", value="New"),
+                WhereClause(type="contains", attribute="name", value="Tech")
+            ],
+            order_by="createdAt",
+            order="desc",
+            limit=50
+        )
+        
+        results = client.crud.search("Lead", search_params)
+        ```
+        
+        ## Relationship Management
+        
+        ```python
+        # Link records
+        client.relationships.relate("Account", account_id, "contacts", contact_id)
+        
+        # Get related records
+        contacts = client.relationships.list("Account", account_id, "contacts")
+        
+        # Unlink records
+        client.relationships.unrelate("Account", account_id, "contacts", contact_id)
+        ```
+        EOF
+        fi
+        
+        # Create cli.md
+        if [ ! -f docs/cli.md ]; then
+          cat > docs/cli.md << 'EOF'
+        # CLI Tool
+        
+        EspoCRM Python Client includes a command-line interface for common operations.
+        
+        ## Installation
+        
+        The CLI tool is automatically installed with the package:
+        
+        ```bash
+        pip install espocrm-python-client
+        ```
+        
+        ## Usage
+        
+        ### Basic Commands
+        
+        ```bash
+        # Show version
+        espocrm-cli --version
+        
+        # Show help
+        espocrm-cli --help
+        ```
+        
+        ### Authentication
+        
+        ```bash
+        # Using API key
+        espocrm-cli --url https://your-espocrm.com --api-key your-key list Lead
+        
+        # Using environment variables
+        export ESPOCRM_URL="https://your-espocrm.com"
+        export ESPOCRM_API_KEY="your-api-key"
+        espocrm-cli list Lead
+        ```
+        
+        ### CRUD Operations
+        
+        ```bash
+        # List records
+        espocrm-cli list Lead --limit 10
+        
+        # Get specific record
+        espocrm-cli get Lead lead-id
+        
+        # Create record
+        espocrm-cli create Lead '{"firstName": "John", "lastName": "Doe"}'
+        
+        # Update record
+        espocrm-cli update Lead lead-id '{"status": "Qualified"}'
+        
+        # Delete record
+        espocrm-cli delete Lead lead-id
+        ```
+        
+        ### Metadata Operations
+        
+        ```bash
+        # Get application metadata
+        espocrm-cli metadata
+        
+        # Get entity metadata
+        espocrm-cli metadata --entity-type Lead
+        ```
+        
+        ### Output Formats
+        
+        ```bash
+        # JSON output
+        espocrm-cli --format json list Lead
+        
+        # Table output (default)
+        espocrm-cli --format table list Lead
+        ```
+        EOF
+        fi
+        
+        # Create contributing.md
+        if [ ! -f docs/contributing.md ]; then
+          cat > docs/contributing.md << 'EOF'
+        # Contributing
+        
+        We welcome contributions to the EspoCRM Python Client!
+        
+        ## Development Setup
+        
+        1. Fork the repository
+        2. Clone your fork:
+           ```bash
+           git clone https://github.com/your-username/espocrm-python-client.git
+           cd espocrm-python-client
+           ```
+        
+        3. Install development dependencies:
+           ```bash
+           pip install -e ".[dev]"
+           ```
+        
+        4. Install pre-commit hooks:
+           ```bash
+           pre-commit install
+           ```
+        
+        ## Running Tests
+        
+        ```bash
+        # Run all tests
+        pytest
+        
+        # Run with coverage
+        pytest --cov=espocrm
+        
+        # Run specific test types
+        pytest -m unit
+        pytest -m integration
+        ```
+        
+        ## Code Quality
+        
+        ```bash
+        # Format code
+        black espocrm tests
+        isort espocrm tests
+        
+        # Type checking
+        mypy espocrm
+        
+        # Linting
+        flake8 espocrm tests
+        
+        # Security scan
+        bandit -r espocrm
+        ```
+        
+        ## Submitting Changes
+        
+        1. Create a feature branch
+        2. Make your changes
+        3. Add tests for new functionality
+        4. Ensure all tests pass
+        5. Submit a pull request
+        
+        ## Code Style
+        
+        - Follow PEP 8
+        - Use type hints
+        - Write docstrings for public APIs
+        - Add tests for new features
+        - Update documentation as needed
+        EOF
+        fi
+        
+        # Create changelog.md (copy from CHANGELOG.md)
+        if [ ! -f docs/changelog.md ]; then
+          cp CHANGELOG.md docs/changelog.md
+        fi
+
+    - name: Build documentation
+      run: |
+        mkdocs build --strict
+
+    - name: Check for broken links
+      run: |
+        # Install link checker
+        pip install linkchecker
+        
+        # Check internal links in built documentation
+        linkchecker --check-extern site/ || true
+
+    - name: Upload documentation artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: site/
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: documentation
+        path: site/
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./site
+        cname: espocrm-python-client.readthedocs.io
+
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: documentation
+        path: site/
+
+    - name: Validate documentation structure
+      run: |
+        # Check that required files exist
+        required_files=(
+          "site/index.html"
+          "site/installation/index.html"
+          "site/quickstart/index.html"
+          "site/authentication/index.html"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing required documentation file: $file"
+            exit 1
+          fi
+        done
+        
+        echo "✅ All required documentation files are present"
+
+    - name: Check documentation size
+      run: |
+        size=$(du -sh site/ | cut -f1)
+        echo "📊 Documentation size: $size"
+        
+        # Check if documentation is too large (>50MB)
+        size_bytes=$(du -sb site/ | cut -f1)
+        if [ $size_bytes -gt 52428800 ]; then
+          echo "⚠️ Documentation size is large: $size"
+        fi
+
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [build-docs, deploy-docs, validate-docs]
+    if: always()
+
+    steps:
+    - name: Notify success
+      if: needs.build-docs.result == 'success'
+      run: |
+        echo "✅ Documentation built successfully!"
+        if [ "${{ needs.deploy-docs.result }}" == "success" ]; then
+          echo "🚀 Documentation deployed to GitHub Pages!"
+        fi
+
+    - name: Notify failure
+      if: needs.build-docs.result == 'failure'
+      run: |
+        echo "❌ Documentation build failed!"
+        exit 1

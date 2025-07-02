@@ -1,0 +1,65 @@
+# EspoCRM Python Client - Geliştirme Bağımlılıkları
+# Temel bağımlılıkları dahil et
+-r requirements.txt
+
+# Test framework ve araçları
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+pytest-xdist>=3.3.0
+pytest-mock>=3.11.0
+pytest-benchmark>=4.0.0
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
+
+# HTTP mocking
+responses>=0.23.0
+httpretty>=1.1.4
+
+# Coverage tools
+coverage>=7.3.0
+coverage-badge>=1.1.0
+
+# Code formatting ve linting
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+flake8-docstrings>=1.7.0
+flake8-import-order>=0.18.0
+
+# Type checking
+mypy>=1.7.0
+types-requests>=2.31.0
+
+# Security scanning
+bandit>=1.7.0
+safety>=2.3.0
+
+# Pre-commit hooks
+pre-commit>=3.5.0
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.4.0
+mkdocstrings[python]>=0.24.0
+
+# Async support (opsiyonel)
+httpx>=0.25.0
+aiofiles>=23.2.0
+
+# Development utilities
+ipython>=8.0.0
+jupyter>=1.0.0
+rich>=13.0.0
+
+# Performance profiling
+memory-profiler>=0.61.0
+line-profiler>=4.1.0
+
+# Test data generation
+faker>=19.0.0
+factory-boy>=3.3.0
+
+# Database testing (if needed)
+pytest-postgresql>=5.0.0
+pytest-redis>=3.0.0

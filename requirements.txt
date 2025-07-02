@@ -1,0 +1,14 @@
+# EspoCRM Python Client - Temel Bağımlılıklar
+# Python 3.8+ gereklidir
+
+# HTTP istekleri için
+requests>=2.31.0
+
+# Veri validasyonu ve type safety için
+pydantic>=2.5.0
+
+# Structured logging için
+structlog>=23.2.0
+
+# Type hints desteği için
+typing-extensions>=4.8.0
