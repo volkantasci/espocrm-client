@@ -172,7 +172,7 @@ class EntityResponse(BaseModel):
         "populate_by_name": True,
     }
     
-    def get_entity(self, entity_class: Optional[Type[EntityT]] = None) -> EntityT:
+    def get_entity(self, entity_class: Optional[Type[EntityT]] = None) -> EntityRecord:
         """Entity instance'ını döndürür.
         
         Args:
@@ -370,11 +370,11 @@ class ListResponse(BaseModel, Generic[EntityT]):
     
     def get_ids(self) -> List[str]:
         """Entity ID'lerini döndürür."""
-        return [item.get("id") for item in self.list if item.get("id")]
+        return [str(item.get("id")) for item in self.list if item.get("id") is not None]
     
     def get_names(self) -> List[str]:
         """Entity adlarını döndürür."""
-        return [item.get("name") for item in self.list if item.get("name")]
+        return [str(item.get("name")) for item in self.list if item.get("name") is not None]
     
     def is_empty(self) -> bool:
         """Liste boş mu kontrol eder."""
@@ -449,9 +449,9 @@ class BulkOperationResult(BaseModel):
     def get_successful_ids(self) -> List[str]:
         """Başarılı işlemlerin ID'lerini döndürür."""
         return [
-            result.get("id") 
-            for result in self.results 
-            if result.get("success") and result.get("id")
+            str(result.get("id"))
+            for result in self.results
+            if result.get("success") and result.get("id") is not None
         ]
     
     def get_failed_results(self) -> List[Dict[str, Any]]:
@@ -684,7 +684,7 @@ def parse_entity_response(data: Dict[str, Any], entity_type: Optional[str] = Non
     if not has_success and has_id:
         return EntityResponse(
             success=True,
-            entity_type=entity_type,
+            entityType=entity_type,
             data=data
         )
     
@@ -708,7 +708,7 @@ def parse_entity_response(data: Dict[str, Any], entity_type: Optional[str] = Non
         fallback_data = {"id": "fallback_id", "name": "Fallback Entity"}
         return EntityResponse(
             success=True,
-            entity_type=entity_type,
+            entityType=entity_type,
             data=fallback_data
         )
 
@@ -754,14 +754,19 @@ def parse_error_response(data: Dict[str, Any], status_code: Optional[int] = None
     if isinstance(data, str):
         return ErrorResponse(
             message=data,
-            status_code=status_code
+            statusCode=status_code
         )
     
     # Message field'ı yoksa error field'ından al
     if "message" not in data and "error" in data:
         data["message"] = data["error"]
     
-    return ErrorResponse(**data, status_code=status_code)
+    # status_code'u statusCode alias'ına çevir
+    if status_code is not None:
+        data = dict(data)  # Kopyala
+        data["statusCode"] = status_code
+    
+    return ErrorResponse(**data)
 
 
 # Export edilecek sınıflar ve fonksiyonlar

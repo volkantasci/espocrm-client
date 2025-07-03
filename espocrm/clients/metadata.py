@@ -10,7 +10,7 @@ import threading
 from typing import Any, Dict, List, Optional, Set, Type, Union
 from datetime import datetime, timedelta
 
-from ..exceptions import EspoCRMError, EspoCRMValidationError
+from ..exceptions import EspoCRMError, EspoCRMValidationError, MetadataError
 from ..models.metadata import (
     ApplicationMetadata,
     EntityMetadata,
@@ -94,6 +94,13 @@ class MetadataCache:
                 "expired_keys": expired_keys,
                 "ttl_seconds": self.ttl_seconds
             }
+    
+    def cleanup_expired(self) -> None:
+        """Expired cache entries'leri temizler."""
+        with self._lock:
+            expired_keys = [key for key in self._cache.keys() if self._is_expired(key)]
+            for key in expired_keys:
+                self._remove(key)
 
 
 class MetadataClient:
@@ -124,6 +131,16 @@ class MetadataClient:
         self._application_metadata: Optional[ApplicationMetadata] = None
         self._entity_types: Optional[Set[str]] = None
         self._last_refresh: Optional[datetime] = None
+    
+    @property
+    def base_url(self) -> str:
+        """Ana client'ın base URL'ini döndürür."""
+        return self.client.base_url
+    
+    @property
+    def api_version(self) -> str:
+        """Ana client'ın API version'ını döndürür."""
+        return self.client.api_version
     
     @timing_decorator
     def get_application_metadata(
@@ -166,16 +183,26 @@ class MetadataClient:
         try:
             # Request parametreleri
             request = MetadataRequest(
-                include_client_defs=include_client_defs,
-                include_scopes=include_scopes,
-                include_fields=include_fields
+                includeClientDefs=include_client_defs,
+                includeScopes=include_scopes,
+                includeFields=include_fields
             )
             
             # API request
             response_data = self.client.get("Metadata", params=request.to_query_params())
             
+            # Validate response structure
+            if not isinstance(response_data, dict):
+                raise MetadataError("Invalid metadata response format")
+            
+            if "entityDefs" not in response_data and not any(key in response_data for key in ["clientDefs", "scopes", "fields", "app"]):
+                raise MetadataError("Malformed metadata response: missing required fields")
+            
             # Parse metadata
-            app_metadata = ApplicationMetadata(**response_data)
+            try:
+                app_metadata = ApplicationMetadata(**response_data)
+            except Exception as e:
+                raise MetadataError(f"Failed to parse metadata response: {str(e)}")
             
             # Cache'e kaydet
             self.cache.set(cache_key, app_metadata)
@@ -294,6 +321,24 @@ class MetadataClient:
             return entity_meta.get_field(field_name)
         return None
     
+    def get_field_metadata(
+        self,
+        entity_type: str,
+        field_name: str,
+        force_refresh: bool = False
+    ) -> Optional[FieldMetadata]:
+        """Entity field metadata'sını alır (wrapper method).
+        
+        Args:
+            entity_type: Entity türü
+            field_name: Field adı
+            force_refresh: Cache'i bypass et
+            
+        Returns:
+            Field metadata (yoksa None)
+        """
+        return self.get_entity_field_metadata(entity_type, field_name, force_refresh)
+    
     def get_entity_relationship_metadata(
         self,
         entity_type: str,
@@ -314,6 +359,24 @@ class MetadataClient:
         if entity_meta:
             return entity_meta.get_link(link_name)
         return None
+    
+    def get_relationship_metadata(
+        self,
+        entity_type: str,
+        link_name: str,
+        force_refresh: bool = False
+    ) -> Optional[RelationshipMetadata]:
+        """Entity relationship metadata'sını alır (wrapper method).
+        
+        Args:
+            entity_type: Entity türü
+            link_name: Link adı
+            force_refresh: Cache'i bypass et
+            
+        Returns:
+            Relationship metadata (yoksa None)
+        """
+        return self.get_entity_relationship_metadata(entity_type, link_name, force_refresh)
     
     def discover_entities(self, force_refresh: bool = False) -> List[str]:
         """Mevcut entity türlerini keşfeder.
@@ -632,6 +695,11 @@ class MetadataClient:
             if entity_types is None:
                 entity_types = app_metadata.get_entity_types()
             
+            # Entity types kontrolü
+            if not entity_types:
+                self.logger.warning("No entity types found for cache warming")
+                return
+            
             # Her entity için metadata'yı cache'e yükle
             for entity_type in entity_types:
                 try:
@@ -648,7 +716,7 @@ class MetadataClient:
             
             self.logger.info(
                 "Cache warming completed",
-                entity_count=len(entity_types)
+                entity_count=len(entity_types) if entity_types else 0
             )
             
         except Exception as e:

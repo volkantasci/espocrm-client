@@ -351,6 +351,30 @@ class EspoCRMEntityError(EspoCRMError):
         self.entity_id = entity_id
 
 
+class EspoCRMMetadataError(EspoCRMError):
+    """Metadata-related errors için exception sınıfı.
+    
+    Metadata operations sırasında oluşan hatalar için kullanılır.
+    Malformed metadata, missing metadata gibi durumlarda kullanılır.
+    """
+    
+    def __init__(
+        self,
+        message: str = "Metadata error",
+        status_code: Optional[int] = 400,
+        details: Optional[Dict[str, Any]] = None,
+        response_data: Optional[Dict[str, Any]] = None,
+        metadata_type: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status_code,
+            details=details,
+            response_data=response_data,
+        )
+        self.metadata_type = metadata_type
+
+
 # Backward compatibility aliases
 RateLimitError = EspoCRMRateLimitError
 ValidationError = EspoCRMValidationError
@@ -360,6 +384,7 @@ EntityNotFoundError = EspoCRMNotFoundError  # Test dosyalarında kullanılan ali
 AttachmentError = EspoCRMEntityError  # Attachment işlemleri için
 RelationshipError = EspoCRMEntityError  # Relationship işlemleri için
 StreamError = EspoCRMEntityError  # Stream işlemleri için
+MetadataError = EspoCRMMetadataError  # Metadata işlemleri için
 
 # Exception sınıflarının listesi - dışarıdan import edilebilir
 __all__ = [
@@ -373,6 +398,7 @@ __all__ = [
     "EspoCRMNotFoundError",
     "EspoCRMServerError",
     "EspoCRMEntityError",
+    "EspoCRMMetadataError",
     "create_exception_from_status_code",
     # Backward compatibility aliases
     "RateLimitError",
@@ -383,4 +409,5 @@ __all__ = [
     "AttachmentError",
     "RelationshipError",
     "StreamError",
+    "MetadataError",
 ]

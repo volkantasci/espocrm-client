@@ -23,7 +23,8 @@ from espocrm.models.metadata import (
 from espocrm.exceptions import (
     EspoCRMError,
     EspoCRMNotFoundError,
-    EspoCRMValidationError
+    EspoCRMValidationError,
+    MetadataError
 )
 
 
@@ -659,7 +660,7 @@ class TestMetadataClientValidation:
         
         # None entity type
         with pytest.raises(EspoCRMValidationError):
-            meta_client.get_entity_metadata(None)
+            meta_client.get_entity_metadata(None)  # type: ignore
     
     def test_field_name_validation(self, mock_client):
         """Field name validation testi."""
@@ -671,7 +672,7 @@ class TestMetadataClientValidation:
         
         # None field name
         with pytest.raises(EspoCRMValidationError):
-            meta_client.get_field_metadata("Account", None)
+            meta_client.get_field_metadata("Account", None)  # type: ignore
     
     def test_relationship_name_validation(self, mock_client):
         """Relationship name validation testi."""
@@ -683,7 +684,7 @@ class TestMetadataClientValidation:
         
         # None relationship name
         with pytest.raises(EspoCRMValidationError):
-            meta_client.get_relationship_metadata("Account", None)
+            meta_client.get_relationship_metadata("Account", None)  # type: ignore
     
     def test_validation_data_validation(self, mock_client):
         """Validation data validation testi."""
@@ -691,11 +692,11 @@ class TestMetadataClientValidation:
         
         # None validation data
         with pytest.raises(EspoCRMValidationError):
-            meta_client.validate_entity_data("Account", None)
+            meta_client.validate_entity_data("Account", None)  # type: ignore
         
         # Invalid validation data type
         with pytest.raises(EspoCRMValidationError):
-            meta_client.validate_entity_data("Account", "invalid_data")
+            meta_client.validate_entity_data("Account", "invalid_data")  # type: ignore
 
 
 @pytest.mark.unit
