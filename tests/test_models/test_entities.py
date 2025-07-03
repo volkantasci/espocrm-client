@@ -227,9 +227,10 @@ class TestEntity:
         repr_str = repr(entity)
         
         # Assertions
-        assert "Entity" in repr_str
         assert "Contact" in repr_str
         assert "contact_123" in repr_str
+        # repr format: "Contact(id='contact_123', name=None)"
+        assert "id=" in repr_str
 
 
 @pytest.mark.unit

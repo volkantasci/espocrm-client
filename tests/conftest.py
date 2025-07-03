@@ -16,14 +16,14 @@ import requests
 from espocrm.client import EspoCRMClient
 from espocrm.config import ClientConfig
 from espocrm.auth import (
-    ApiKeyAuthentication,
-    HMACAuthentication,
-    BasicAuthentication,
+    APIKeyAuth,
+    HMACAuth,
+    BasicAuth,
     create_api_key_auth,
     create_hmac_auth,
     create_basic_auth
 )
-from espocrm.models.entities import EntityRecord
+from espocrm.models.entities import EntityRecord, Entity
 from espocrm.models.responses import (
     ListResponse,
     EntityResponse,

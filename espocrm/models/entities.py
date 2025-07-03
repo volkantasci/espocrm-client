@@ -1314,9 +1314,38 @@ class Entity(EntityRecord):
             data: Entity data dictionary (for backward compatibility)
             **kwargs: Additional keyword arguments
         """
-        if entity_type is not None and data is not None:
-            # Backward compatibility: Entity("Account", data)
-            if isinstance(data, dict):
+        from ..exceptions import ValidationError
+        
+        # Handle explicit two-argument calls (including None values)
+        if (entity_type is not None or data is not None) and len([x for x in [entity_type, data, kwargs] if x]) <= 2:
+            # Two-argument format: Entity(entity_type, data) - validate both even if one is None
+            if data is not None:  # data provided, validate entity_type
+                # Validate entity type
+                if entity_type is None or not isinstance(entity_type, str) or not entity_type.strip():
+                    raise ValidationError("Entity type must be a non-empty string")
+                
+                # Validate data
+                if not isinstance(data, dict):
+                    raise ValidationError("data must be a dictionary")
+                
+                # Validate entity type format (should be capitalized)
+                if entity_type != entity_type.capitalize():
+                    raise ValidationError("Entity type must be capitalized (e.g., 'Account', not 'account')")
+                
+                # Validate ID if present
+                if "id" in data and data["id"] is not None:
+                    entity_id = data["id"]
+                    if not isinstance(entity_id, str):
+                        raise ValidationError("Entity ID must be a string")
+                    if not entity_id.strip():
+                        raise ValidationError("Entity ID cannot be empty")
+                    # Check for invalid characters (spaces, newlines, HTML chars)
+                    if ' ' in entity_id or '\n' in entity_id or '\t' in entity_id or '<' in entity_id or '>' in entity_id:
+                        raise ValidationError("Entity ID contains invalid characters")
+                    # For production IDs (17+ chars), enforce alphanumeric only
+                    if len(entity_id) >= 17 and not entity_id.isalnum():
+                        raise ValidationError("Entity ID must contain only alphanumeric characters")
+                
                 # Entity type'ı data'ya ekle
                 data = data.copy()
                 data["_entity_type"] = entity_type
@@ -1331,22 +1360,62 @@ class Entity(EntityRecord):
                 else:
                     super().__init__(**data)
             else:
-                raise ValueError("data must be a dictionary")
+                # Only entity_type provided, no data
+                raise ValidationError("data must be provided when entity_type is specified")
+        elif entity_type is None and data is not None and not kwargs:
+            # Backward compatibility: Entity("Account", data)
+            
+            # Validate entity type
+            if entity_type is None or not isinstance(entity_type, str) or not entity_type.strip():
+                raise ValidationError("Entity type must be a non-empty string")
+            
+            # Validate data
+            if not isinstance(data, dict):
+                raise ValidationError("data must be a dictionary")
+            
+            # Validate entity type format (should be capitalized)
+            if entity_type != entity_type.capitalize():
+                raise ValidationError("Entity type must be capitalized (e.g., 'Account', not 'account')")
+            
+            # Validate ID if present
+            if "id" in data and data["id"] is not None:
+                entity_id = data["id"]
+                if not isinstance(entity_id, str):
+                    raise ValidationError("Entity ID must be a string")
+                if not entity_id.strip():
+                    raise ValidationError("Entity ID cannot be empty")
+                # Allow test IDs (shorter than 17 chars) for backward compatibility
+                if len(entity_id) >= 17 and not entity_id.isalnum():
+                    raise ValidationError("Entity ID must contain only alphanumeric characters")
+            
+            # Entity type'ı data'ya ekle
+            data = data.copy()
+            data["_entity_type"] = entity_type
+            # ID validation'ını geçici olarak devre dışı bırak
+            original_id = data.get("id")
+            if original_id and len(original_id) < 17:
+                # Test ID'sini geçici olarak kaldır, sonra manuel olarak ayarla
+                temp_id = data.pop("id", None)
+                super().__init__(**data)
+                # ID'yi validation olmadan ayarla
+                object.__setattr__(self, "id", temp_id)
+            else:
+                super().__init__(**data)
         elif data is not None and entity_type is None:
             # Entity(data) format
-            if isinstance(data, dict):
-                # ID validation'ını geçici olarak devre dışı bırak
-                original_id = data.get("id")
-                if original_id and len(original_id) < 17:
-                    # Test ID'sini geçici olarak kaldır, sonra manuel olarak ayarla
-                    temp_id = data.pop("id", None)
-                    super().__init__(**data)
-                    # ID'yi validation olmadan ayarla
-                    object.__setattr__(self, "id", temp_id)
-                else:
-                    super().__init__(**data)
+            if not isinstance(data, dict):
+                raise ValidationError("data must be a dictionary")
+            
+            # ID validation'ını geçici olarak devre dışı bırak
+            original_id = data.get("id")
+            if original_id and len(original_id) < 17:
+                # Test ID'sini geçici olarak kaldır, sonra manuel olarak ayarla
+                temp_id = data.pop("id", None)
+                super().__init__(**data)
+                # ID'yi validation olmadan ayarla
+                object.__setattr__(self, "id", temp_id)
             else:
-                raise ValueError("data must be a dictionary")
+                super().__init__(**data)
         else:
             # Normal Pydantic initialization
             super().__init__(**kwargs)
@@ -1365,6 +1434,16 @@ class Entity(EntityRecord):
             convert_type: Whether to convert type (ignored for now)
             target_type: Target type for conversion (ignored for now)
         """
+        from ..exceptions import ValidationError
+        
+        # Validate field name
+        if not isinstance(key, str):
+            raise ValidationError("Field name must be a string")
+        if not key or not key.strip():
+            raise ValidationError("Field name cannot be empty")
+        if ' ' in key or '\n' in key or '\t' in key:
+            raise ValidationError("Field name contains invalid characters")
+        
         if convert_type and target_type:
             # Type conversion logic could be added here if needed
             pass
