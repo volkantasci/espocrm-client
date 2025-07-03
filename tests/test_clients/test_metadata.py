@@ -87,7 +87,7 @@ class TestMetadataClient:
         assert len(result.entity_defs) == 1
         
         # API call verification
-        mock_client.get.assert_called_once_with("Metadata")
+        mock_client.get.assert_called_once_with("Metadata", params={})
     
     def test_get_entity_metadata_success(self, mock_client):
         """Entity metadata alma başarı testi."""

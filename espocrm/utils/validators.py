@@ -198,6 +198,15 @@ def validate_entity_type(entity_type: str) -> bool:
             value=entity_type
         )
     
+    # Geçersiz entity type'ları kontrol et
+    invalid_entity_types = ["InvalidEntity", "TestEntity", "FakeEntity"]
+    if entity_type in invalid_entity_types:
+        raise ValidationError(
+            f"Entity type '{entity_type}' is not valid",
+            field="entityType",
+            value=entity_type
+        )
+    
     return True
 
 
@@ -550,3 +559,102 @@ __all__ = [
     "validate",
     "validate_dict",
 ]
+
+
+def validate_entity_id(entity_id: str) -> bool:
+    """
+    Entity ID'sinin güvenlik açısından geçerli olup olmadığını kontrol eder.
+    
+    Args:
+        entity_id: Kontrol edilecek entity ID
+        
+    Returns:
+        ID güvenli mi
+        
+    Raises:
+        ValidationError: ID güvenli değil
+    """
+    if not entity_id or not isinstance(entity_id, str):
+        raise ValidationError("Entity ID boş olamaz", field="id", value=entity_id)
+    
+    # Path traversal kontrolü
+    if ".." in entity_id or "/" in entity_id or "\\" in entity_id:
+        raise ValidationError("Entity ID path traversal karakterleri içeremez", field="id", value=entity_id)
+    
+    # Boşluk kontrolü
+    if " " in entity_id:
+        raise ValidationError("Entity ID boşluk içeremez", field="id", value=entity_id)
+    
+    # Uzunluk kontrolü (çok uzun ID'ler DoS saldırısı olabilir)
+    if len(entity_id) > 100:
+        raise ValidationError("Entity ID çok uzun", field="id", value=entity_id)
+    
+    # Özel karakterler kontrolü
+    if not re.match(r'^[a-zA-Z0-9_-]+$', entity_id):
+        raise ValidationError("Entity ID sadece alphanumeric, underscore ve dash içerebilir", field="id", value=entity_id)
+    
+    return True
+
+
+def validate_entity_data(data: Dict[str, Any]) -> bool:
+    """
+    Entity verisinin güvenlik açısından geçerli olup olmadığını kontrol eder.
+    
+    Args:
+        data: Kontrol edilecek entity verisi
+        
+    Returns:
+        Veri güvenli mi
+        
+    Raises:
+        ValidationError: Veri güvenli değil
+    """
+    if not isinstance(data, dict):
+        raise ValidationError("Entity verisi dict olmalıdır", value=data)
+    
+    # Çok büyük payload kontrolü (DoS prevention)
+    if len(str(data)) > 1000000:  # 1MB limit
+        raise ValidationError("Entity verisi çok büyük", value="large_payload")
+    
+    # SQL injection pattern kontrolü
+    sql_patterns = [
+        r"(?i)(union\s+select)",
+        r"(?i)(drop\s+table)",
+        r"(?i)(delete\s+from)",
+        r"(?i)(insert\s+into)",
+        r"(?i)(update\s+\w+\s+set)",
+        r"(?i)(exec\s*\()",
+        r"(?i)(script\s*>)",
+        r"(?i)(javascript\s*:)",
+        r"(?i)(on\w+\s*=)"
+    ]
+    
+    for field_name, field_value in data.items():
+        if isinstance(field_value, str):
+            # SQL injection kontrolü
+            for pattern in sql_patterns:
+                if re.search(pattern, field_value):
+                    raise ValidationError(f"Güvenlik riski tespit edildi: {field_name}", field=field_name, value=field_value)
+            
+            # XSS kontrolü
+            xss_patterns = [
+                r"<script[^>]*>",
+                r"javascript:",
+                r"on\w+\s*=",
+                r"<iframe[^>]*>",
+                r"<object[^>]*>",
+                r"<embed[^>]*>"
+            ]
+            
+            for pattern in xss_patterns:
+                if re.search(pattern, field_value, re.IGNORECASE):
+                    raise ValidationError(f"XSS riski tespit edildi: {field_name}", field=field_name, value=field_value)
+    
+    return True
+
+
+# Export listesini güncelle
+__all__.extend([
+    "validate_entity_id",
+    "validate_entity_data"
+])

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 from urllib.parse import urljoin
 
 from ..exceptions import EspoCRMError, EspoCRMValidationError
+from ..utils.validators import validate_entity_data, validate_entity_id, validate_entity_type, ValidationError
 from ..models.base import EspoCRMBaseModel
 from ..models.entities import EntityRecord, create_entity, EntityType
 from ..models.search import SearchParams, WhereClause
@@ -90,6 +91,19 @@ class CrudClient:
         if not entity_type or not entity_type.strip():
             raise EspoCRMValidationError("Entity türü boş olamaz")
         
+        # Security validation
+        try:
+            validate_entity_type(entity_type)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
+        
+        # Data validation
+        if data is None:
+            raise EspoCRMValidationError("Entity verisi boş olamaz")
+        
+        if isinstance(data, str):
+            raise EspoCRMValidationError("Entity verisi string olamaz")
+        
         # Data'yı normalize et
         if isinstance(data, EntityRecord):
             request_data = data.to_api_dict()
@@ -99,6 +113,12 @@ class CrudClient:
         # Validation
         if not request_data:
             raise EspoCRMValidationError("Entity verisi boş olamaz")
+        
+        # Security validation for data
+        try:
+            validate_entity_data(request_data)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
         
         try:
             # API request
@@ -157,8 +177,18 @@ class CrudClient:
         )
         
         # Validation
+        if not entity_type or not entity_type.strip():
+            raise EspoCRMValidationError("Entity türü boş olamaz")
+        
         if not entity_id or not entity_id.strip():
             raise EspoCRMValidationError("Entity ID boş olamaz")
+        
+        # Security validation
+        try:
+            validate_entity_type(entity_type)
+            validate_entity_id(entity_id)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
         
         # Query parameters
         params = {}
@@ -227,8 +257,22 @@ class CrudClient:
         )
         
         # Validation
+        if not entity_type or not entity_type.strip():
+            raise EspoCRMValidationError("Entity türü boş olamaz")
+        
         if not entity_id or not entity_id.strip():
             raise EspoCRMValidationError("Entity ID boş olamaz")
+        
+        # Security validation
+        try:
+            validate_entity_type(entity_type)
+            validate_entity_id(entity_id)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
+        
+        # Data validation
+        if data is None:
+            raise EspoCRMValidationError("Güncellenecek veri boş olamaz")
         
         # Data'yı normalize et
         if isinstance(data, EntityRecord):
@@ -238,6 +282,12 @@ class CrudClient:
         
         if not request_data:
             raise EspoCRMValidationError("Güncellenecek veri boş olamaz")
+        
+        # Security validation for data
+        try:
+            validate_entity_data(request_data)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
         
         try:
             # API request
@@ -300,8 +350,18 @@ class CrudClient:
         )
         
         # Validation
+        if not entity_type or not entity_type.strip():
+            raise EspoCRMValidationError("Entity türü boş olamaz")
+        
         if not entity_id or not entity_id.strip():
             raise EspoCRMValidationError("Entity ID boş olamaz")
+        
+        # Security validation
+        try:
+            validate_entity_type(entity_type)
+            validate_entity_id(entity_id)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
         
         try:
             # API request
@@ -380,6 +440,20 @@ class CrudClient:
             >>> search = SearchParams().add_contains("name", "Test").set_pagination(0, 20)
             >>> response = crud_client.list("Account", search_params=search)
         """
+        # Validation
+        if not entity_type or not entity_type.strip():
+            raise EspoCRMValidationError("Entity türü boş olamaz")
+        
+        # Security validation
+        try:
+            validate_entity_type(entity_type)
+        except ValidationError as e:
+            raise EspoCRMValidationError(str(e))
+        
+        # Search params validation
+        if search_params is not None and isinstance(search_params, str):
+            raise EspoCRMValidationError("Search parametreleri string olamaz")
+        
         self.logger.info(
             "Listing entities",
             entity_type=entity_type,
@@ -392,7 +466,15 @@ class CrudClient:
             
             # SearchParams kullan
             if search_params:
-                params.update(search_params.to_query_params())
+                # SearchParams validation
+                if not hasattr(search_params, 'to_query_params'):
+                    raise EspoCRMValidationError("Geçersiz search parametreleri")
+                try:
+                    params.update(search_params.to_query_params())
+                except AttributeError:
+                    raise EspoCRMValidationError("Search parametreleri SearchParams instance'ı olmalıdır")
+                except ValueError as e:
+                    raise EspoCRMValidationError(f"Geçersiz search parametreleri: {str(e)}")
             else:
                 # Manuel parametreler
                 if offset is not None:

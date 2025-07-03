@@ -224,7 +224,10 @@ class RotatingFileHandler(StdRotatingFileHandler):
         errors: Optional[str] = None,
         create_dirs: bool = True,
         file_permissions: Optional[int] = 0o644,
-        compress_rotated: bool = False
+        compress_rotated: bool = False,
+        # Backward compatibility aliases
+        max_bytes: Optional[int] = None,
+        backup_count: Optional[int] = None
     ):
         """
         Initialize rotating file handler
@@ -240,7 +243,15 @@ class RotatingFileHandler(StdRotatingFileHandler):
             create_dirs: Create parent directories if needed
             file_permissions: File permissions (octal)
             compress_rotated: Compress rotated files
+            max_bytes: Alias for maxBytes (backward compatibility)
+            backup_count: Alias for backupCount (backward compatibility)
         """
+        # Handle backward compatibility aliases
+        if max_bytes is not None:
+            maxBytes = max_bytes
+        if backup_count is not None:
+            backupCount = backup_count
+            
         self.filename_path = Path(filename)
         self.create_dirs = create_dirs
         self.file_permissions = file_permissions
@@ -319,7 +330,9 @@ class TimedRotatingHandler(TimedRotatingFileHandler):
         atTime: Optional[datetime] = None,
         errors: Optional[str] = None,
         create_dirs: bool = True,
-        file_permissions: Optional[int] = 0o644
+        file_permissions: Optional[int] = 0o644,
+        # Backward compatibility aliases
+        backup_count: Optional[int] = None
     ):
         """
         Initialize timed rotating file handler
@@ -336,7 +349,12 @@ class TimedRotatingHandler(TimedRotatingFileHandler):
             errors: Error handling mode
             create_dirs: Create parent directories if needed
             file_permissions: File permissions (octal)
+            backup_count: Alias for backupCount (backward compatibility)
         """
+        # Handle backward compatibility aliases
+        if backup_count is not None:
+            backupCount = backup_count
+            
         self.filename_path = Path(filename)
         self.create_dirs = create_dirs
         self.file_permissions = file_permissions

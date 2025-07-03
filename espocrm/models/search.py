@@ -340,6 +340,29 @@ class SearchParams(BaseModel):
         
         # Where clauses
         if self.where:
+            # Where clause validation
+            for i, clause in enumerate(self.where):
+                if not isinstance(clause, dict):
+                    raise ValueError(f"Where clause {i} must be a dictionary")
+                
+                # Check for required fields
+                if "type" not in clause:
+                    raise ValueError(f"Where clause {i} must have a 'type' field")
+                
+                # Check for valid operator
+                clause_type = clause.get("type")
+                if clause_type not in [op.value for op in WhereOperator]:
+                    raise ValueError(f"Where clause {i} has invalid operator: {clause_type}")
+                
+                # Basic validation for common operators
+                if clause_type in ["equals", "notEquals", "greaterThan", "lessThan",
+                                 "greaterThanOrEqual", "lessThanOrEqual", "contains",
+                                 "notContains", "startsWith", "endsWith", "like", "notLike"]:
+                    if "attribute" not in clause:
+                        raise ValueError(f"Where clause {i} with operator '{clause_type}' must have an 'attribute' field")
+                    if "value" not in clause:
+                        raise ValueError(f"Where clause {i} with operator '{clause_type}' must have a 'value' field")
+            
             # EspoCRM where parametresi doğrudan array olarak gönderilir
             params["where"] = self.where
         

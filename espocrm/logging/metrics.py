@@ -217,7 +217,7 @@ class MetricsAggregator:
         response_times = [m.response_time_ms for m in metrics if m.response_time_ms is not None]
         
         # Group by endpoint
-        endpoint_stats = defaultdict(lambda: {'count': 0, 'success': 0, 'errors': 0, 'response_times': []})
+        endpoint_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {'count': 0, 'success': 0, 'errors': 0, 'response_times': []})
         for metric in metrics:
             key = f"{metric.method} {metric.endpoint}"
             endpoint_stats[key]['count'] += 1
@@ -275,7 +275,7 @@ class MetricsAggregator:
             return {}
         
         # Group by operation
-        operation_stats = defaultdict(lambda: {'count': 0, 'durations': []})
+        operation_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {'count': 0, 'durations': []})
         for metric in metrics:
             operation_stats[metric.operation]['count'] += 1
             operation_stats[metric.operation]['durations'].append(metric.duration_ms)
@@ -540,7 +540,7 @@ class MetricsCollector:
         Returns:
             Statistics dictionary
         """
-        stats = {
+        stats: Dict[str, Any] = {
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'time_window': str(time_window) if time_window else 'all'
         }
@@ -558,6 +558,74 @@ class MetricsCollector:
         
         return stats
     
+    def get_aggregated_statistics(self) -> Dict[str, Any]:
+        """
+        Get aggregated statistics from all metrics
+        
+        Returns:
+            Aggregated statistics dictionary
+        """
+        stats = self.get_stats()
+        
+        # Initialize aggregated stats
+        aggregated = {
+            'total_logs': 0,
+            'error_count': 0,
+            'warning_count': 0,
+            'by_logger': {},
+            'timestamp': stats.get('timestamp'),
+            'time_window': stats.get('time_window')
+        }
+        
+        # Aggregate counter metrics to extract log statistics
+        if 'counters' in stats:
+            for counter_name, counter_data in stats['counters'].items():
+                value = counter_data.get('value', 0)
+                
+                # Extract log level counters
+                if counter_name.startswith('log_level_'):
+                    aggregated['total_logs'] += value
+                elif counter_name.startswith('log_errors'):
+                    aggregated['error_count'] += value
+                elif counter_name.startswith('log_warnings'):
+                    aggregated['warning_count'] += value
+                
+                # Extract by-logger statistics
+                labels = counter_data.get('labels', {})
+                logger_name = labels.get('logger')
+                if logger_name:
+                    if logger_name not in aggregated['by_logger']:
+                        aggregated['by_logger'][logger_name] = {
+                            'total_logs': 0,
+                            'error_count': 0,
+                            'warning_count': 0
+                        }
+                    
+                    if counter_name.startswith('log_level_'):
+                        aggregated['by_logger'][logger_name]['total_logs'] += value
+                    elif counter_name.startswith('log_errors'):
+                        aggregated['by_logger'][logger_name]['error_count'] += value
+                    elif counter_name.startswith('log_warnings'):
+                        aggregated['by_logger'][logger_name]['warning_count'] += value
+        
+        # Add request and performance metrics if available
+        if 'requests' in stats and stats['requests']:
+            aggregated['requests'] = {
+                'total': stats['requests'].get('total_requests', 0),
+                'success_rate': stats['requests'].get('success_rate', 0),
+                'error_rate': stats['requests'].get('error_rate', 0),
+                'avg_response_time': stats['requests'].get('avg_response_time', 0)
+            }
+        
+        if 'performance' in stats and stats['performance']:
+            aggregated['performance'] = {
+                'total_operations': stats['performance'].get('total_operations', 0),
+                'avg_duration': stats['performance'].get('avg_duration', 0),
+                'max_duration': stats['performance'].get('max_duration', 0)
+            }
+        
+        return aggregated
+    
     def reset_metrics(self) -> None:
         """Reset all metrics"""
         with self._lock:
@@ -568,6 +636,40 @@ class MetricsCollector:
             self._aggregator = MetricsAggregator(self.window_size)
         
         self.logger.info("Metrics reset")
+    
+    def add_metrics(self, logger_name: str, metrics: 'LogMetrics') -> None:
+        """
+        Add metrics from a logger
+        
+        Args:
+            logger_name: Name of the logger
+            metrics: LogMetrics instance to add
+        """
+        # Record the metrics as performance data
+        stats = metrics.get_statistics()
+        
+        # Record as counters
+        for level, count in stats['log_levels'].items():
+            self.increment_counter(f"log_level_{level.lower()}", count, {'logger': logger_name})
+        
+        # Record error and warning counts
+        if stats['error_count'] > 0:
+            self.increment_counter("log_errors", stats['error_count'], {'logger': logger_name})
+        if stats['warning_count'] > 0:
+            self.increment_counter("log_warnings", stats['warning_count'], {'logger': logger_name})
+        
+        # Record response time metrics if available
+        if stats['average_response_time'] > 0:
+            self.record_performance(
+                f"logger_{logger_name}_response_time",
+                stats['average_response_time'],
+                {
+                    'logger': logger_name,
+                    'min_time': stats['min_response_time'],
+                    'max_time': stats['max_response_time'],
+                    'median_time': stats['median_response_time']
+                }
+            )
 
 
 # Global metrics collector instance
