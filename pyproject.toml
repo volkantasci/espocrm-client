@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "espocrm-python-client"
+name = "espocrm-client"
 version = "0.1.0"
 description = "Modern, type-safe and comprehensive EspoCRM API client library for Python"
 readme = "README.md"
@@ -88,15 +88,15 @@ async = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/espocrm/espocrm-python-client"
-Documentation = "https://espocrm-python-client.readthedocs.io"
-Repository = "https://github.com/espocrm/espocrm-python-client.git"
-Issues = "https://github.com/espocrm/espocrm-python-client/issues"
-Changelog = "https://github.com/espocrm/espocrm-python-client/blob/main/CHANGELOG.md"
-"Bug Reports" = "https://github.com/espocrm/espocrm-python-client/issues"
-"Feature Requests" = "https://github.com/espocrm/espocrm-python-client/issues/new?template=feature_request.md"
-"Source Code" = "https://github.com/espocrm/espocrm-python-client"
-"Download" = "https://pypi.org/project/espocrm-python-client/"
+Homepage = "https://github.com/espocrm/espocrm-client"
+Documentation = "https://espocrm-client.readthedocs.io"
+Repository = "https://github.com/espocrm/espocrm-client.git"
+Issues = "https://github.com/espocrm/espocrm-client/issues"
+Changelog = "https://github.com/espocrm/espocrm-client/blob/main/CHANGELOG.md"
+"Bug Reports" = "https://github.com/espocrm/espocrm-client/issues"
+"Feature Requests" = "https://github.com/espocrm/espocrm-client/issues/new?template=feature_request.md"
+"Source Code" = "https://github.com/espocrm/espocrm-client"
+"Download" = "https://pypi.org/project/espocrm-client/"
 "Funding" = "https://github.com/sponsors/espocrm"
 
 [project.scripts]

@@ -158,7 +158,7 @@ This is the initial release of the EspoCRM Python Client library. It provides a 
 
 **Getting Started:**
 ```bash
-pip install espocrm-python-client
+pip install espocrm-client
 ```
 
 **Quick Example:**
@@ -177,7 +177,7 @@ lead = client.crud.create("Lead", {
 })
 ```
 
-For detailed documentation, visit: https://espocrm-python-client.readthedocs.io
+For detailed documentation, visit: https://espocrm-client.readthedocs.io
 
 ---
 
@@ -187,9 +187,9 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## Support
 
-- **Documentation**: https://espocrm-python-client.readthedocs.io
-- **Issues**: https://github.com/espocrm/espocrm-python-client/issues
-- **Discussions**: https://github.com/espocrm/espocrm-python-client/discussions
+- **Documentation**: https://espocrm-client.readthedocs.io
+- **Issues**: https://github.com/espocrm/espocrm-client/issues
+- **Discussions**: https://github.com/espocrm/espocrm-client/discussions
 
 ## License
 

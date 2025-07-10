@@ -1,11 +1,11 @@
 # EspoCRM Python Client
 
-[![PyPI version](https://badge.fury.io/py/espocrm-python-client.svg)](https://badge.fury.io/py/espocrm-python-client)
-[![Python versions](https://img.shields.io/pypi/pyversions/espocrm-python-client.svg)](https://pypi.org/project/espocrm-python-client/)
-[![License](https://img.shields.io/pypi/l/espocrm-python-client.svg)](https://github.com/espocrm/espocrm-python-client/blob/main/LICENSE)
-[![Tests](https://github.com/espocrm/espocrm-python-client/workflows/Tests/badge.svg)](https://github.com/espocrm/espocrm-python-client/actions)
-[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://espocrm-python-client.readthedocs.io)
-[![Coverage](https://codecov.io/gh/espocrm/espocrm-python-client/branch/main/graph/badge.svg)](https://codecov.io/gh/espocrm/espocrm-python-client)
+[![PyPI version](https://badge.fury.io/py/espocrm-client.svg)](https://badge.fury.io/py/espocrm-client)
+[![Python versions](https://img.shields.io/pypi/pyversions/espocrm-client.svg)](https://pypi.org/project/espocrm-client/)
+[![License](https://img.shields.io/pypi/l/espocrm-client.svg)](https://github.com/espocrm/espocrm-client/blob/main/LICENSE)
+[![Tests](https://github.com/espocrm/espocrm-client/workflows/Tests/badge.svg)](https://github.com/espocrm/espocrm-client/actions)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://espocrm-client.readthedocs.io)
+[![Coverage](https://codecov.io/gh/espocrm/espocrm-client/branch/main/graph/badge.svg)](https://codecov.io/gh/espocrm/espocrm-client)
 
 Modern, type-safe and comprehensive EspoCRM API client library for Python.
 
@@ -27,30 +27,30 @@ Modern, type-safe and comprehensive EspoCRM API client library for Python.
 Install from PyPI using pip:
 
 ```bash
-pip install espocrm-python-client
+pip install espocrm-client
 ```
 
 ### Optional Dependencies
 
 ```bash
 # For async support
-pip install espocrm-python-client[async]
+pip install espocrm-client[async]
 
 # For development
-pip install espocrm-python-client[dev]
+pip install espocrm-client[dev]
 
 # For documentation
-pip install espocrm-python-client[docs]
+pip install espocrm-client[docs]
 
 # Install all optional dependencies
-pip install espocrm-python-client[async,dev,docs]
+pip install espocrm-client[async,dev,docs]
 ```
 
 ### Development Installation
 
 ```bash
-git clone https://github.com/espocrm/espocrm-python-client.git
-cd espocrm-python-client
+git clone https://github.com/espocrm/espocrm-client.git
+cd espocrm-client
 pip install -e ".[dev]"
 ```
 
@@ -346,18 +346,18 @@ Katkılarınızı memnuniyetle karşılıyoruz! Lütfen katkıda bulunmadan önc
 
 ## 📞 Destek
 
-- **Dokümantasyon**: [https://espocrm-python-client.readthedocs.io](https://espocrm-python-client.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/espocrm/espocrm-python-client/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/espocrm/espocrm-python-client/discussions)
+- **Dokümantasyon**: [https://espocrm-client.readthedocs.io](https://espocrm-client.readthedocs.io)
+- **Issues**: [GitHub Issues](https://github.com/espocrm/espocrm-client/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/espocrm/espocrm-client/discussions)
 
 ## 🔗 Links
 
 - [EspoCRM Official Website](https://www.espocrm.com/)
 - [EspoCRM API Documentation](https://docs.espocrm.com/development/api/)
-- [PyPI Package](https://pypi.org/project/espocrm-python-client/)
-- [GitHub Repository](https://github.com/espocrm/espocrm-python-client)
-- [Documentation](https://espocrm-python-client.readthedocs.io)
-- [Changelog](https://github.com/espocrm/espocrm-python-client/blob/main/CHANGELOG.md)
+- [PyPI Package](https://pypi.org/project/espocrm-client/)
+- [GitHub Repository](https://github.com/espocrm/espocrm-client)
+- [Documentation](https://espocrm-client.readthedocs.io)
+- [Changelog](https://github.com/espocrm/espocrm-client/blob/main/CHANGELOG.md)
 
 ## 📈 Project Status
 
@@ -379,17 +379,17 @@ Katkılarınızı memnuniyetle karşılıyoruz! Lütfen katkıda bulunmadan önc
 
 ## 📊 Statistics
 
-- **Downloads**: [![Downloads](https://pepy.tech/badge/espocrm-python-client)](https://pepy.tech/project/espocrm-python-client)
-- **GitHub Stars**: [![GitHub stars](https://img.shields.io/github/stars/espocrm/espocrm-python-client.svg?style=social&label=Star)](https://github.com/espocrm/espocrm-python-client)
-- **Code Quality**: [![Code Quality](https://img.shields.io/codacy/grade/your-project-id.svg)](https://www.codacy.com/app/espocrm/espocrm-python-client)
+- **Downloads**: [![Downloads](https://pepy.tech/badge/espocrm-client)](https://pepy.tech/project/espocrm-client)
+- **GitHub Stars**: [![GitHub stars](https://img.shields.io/github/stars/espocrm/espocrm-client.svg?style=social&label=Star)](https://github.com/espocrm/espocrm-client)
+- **Code Quality**: [![Code Quality](https://img.shields.io/codacy/grade/your-project-id.svg)](https://www.codacy.com/app/espocrm/espocrm-client)
 
 ## 🤝 Contributing
 
 We welcome contributions! Here's how you can help:
 
-1. **Report Bugs**: [Create an issue](https://github.com/espocrm/espocrm-python-client/issues/new?template=bug_report.md)
-2. **Request Features**: [Create a feature request](https://github.com/espocrm/espocrm-python-client/issues/new?template=feature_request.md)
-3. **Submit Pull Requests**: [Contributing Guidelines](https://github.com/espocrm/espocrm-python-client/blob/main/CONTRIBUTING.md)
+1. **Report Bugs**: [Create an issue](https://github.com/espocrm/espocrm-client/issues/new?template=bug_report.md)
+2. **Request Features**: [Create a feature request](https://github.com/espocrm/espocrm-client/issues/new?template=feature_request.md)
+3. **Submit Pull Requests**: [Contributing Guidelines](https://github.com/espocrm/espocrm-client/blob/main/CONTRIBUTING.md)
 4. **Improve Documentation**: Help us improve our docs
 5. **Share**: Star the project and share with others
 
@@ -397,8 +397,8 @@ We welcome contributions! Here's how you can help:
 
 ```bash
 # Clone the repository
-git clone https://github.com/espocrm/espocrm-python-client.git
-cd espocrm-python-client
+git clone https://github.com/espocrm/espocrm-client.git
+cd espocrm-client
 
 # Install development dependencies
 pip install -e ".[dev]"
@@ -418,18 +418,18 @@ flake8 espocrm tests
 
 ## 📝 Changelog
 
-See [CHANGELOG.md](https://github.com/espocrm/espocrm-python-client/blob/main/CHANGELOG.md) for a detailed history of changes.
+See [CHANGELOG.md](https://github.com/espocrm/espocrm-client/blob/main/CHANGELOG.md) for a detailed history of changes.
 
 ## 🆘 Support
 
-- **Documentation**: [Complete documentation](https://espocrm-python-client.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/espocrm/espocrm-python-client/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/espocrm/espocrm-python-client/discussions)
-- **Email**: [support@espocrm-python-client.com](mailto:support@espocrm-python-client.com)
+- **Documentation**: [Complete documentation](https://espocrm-client.readthedocs.io)
+- **Issues**: [GitHub Issues](https://github.com/espocrm/espocrm-client/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/espocrm/espocrm-client/discussions)
+- **Email**: [support@espocrm-client.com](mailto:support@espocrm-client.com)
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/espocrm/espocrm-python-client/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/espocrm/espocrm-client/blob/main/LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -437,7 +437,7 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 - [Pydantic](https://pydantic-docs.helpmanual.io/) for data validation
 - [Requests](https://requests.readthedocs.io/) for HTTP functionality
 - [Structlog](https://www.structlog.org/) for structured logging
-- All [contributors](https://github.com/espocrm/espocrm-python-client/graphs/contributors) who help improve this project
+- All [contributors](https://github.com/espocrm/espocrm-client/graphs/contributors) who help improve this project
 
 ---
 
@@ -445,6 +445,6 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 **Made with ❤️ for the EspoCRM community**
 
-[⭐ Star us on GitHub](https://github.com/espocrm/espocrm-python-client) • [📦 Install from PyPI](https://pypi.org/project/espocrm-python-client/) • [📚 Read the Docs](https://espocrm-python-client.readthedocs.io)
+[⭐ Star us on GitHub](https://github.com/espocrm/espocrm-client) • [📦 Install from PyPI](https://pypi.org/project/espocrm-client/) • [📚 Read the Docs](https://espocrm-client.readthedocs.io)
 
 </div>
