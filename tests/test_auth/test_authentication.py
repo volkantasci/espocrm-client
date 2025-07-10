@@ -571,7 +571,7 @@ class TestAuthenticationIntegration:
         assert real_client.auth is not None
         assert real_client.auth.validate_credentials()
     
-    def test_auth_header_injection(self, mock_http_responses):
+    def test_auth_header_injection(self):
         """Auth header injection testi."""
         auth = create_api_key_auth("test_api_key_123")
         

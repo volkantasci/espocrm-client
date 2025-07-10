@@ -19,19 +19,13 @@ logger = logging.getLogger(__name__)
 
 def snake_to_camel(snake_str: str) -> str:
     """
-    Snake_case string'i camelCase'e çevirir.
+    Converts snake_case string to camelCase.
     
     Args:
         snake_str: Snake_case string
         
     Returns:
         camelCase string
-        
-    Example:
-        >>> snake_to_camel('user_name')
-        'userName'
-        >>> snake_to_camel('first_name_last_name')
-        'firstNameLastName'
     """
     if not snake_str:
         return snake_str
@@ -341,22 +335,16 @@ def retry_on_exception(
     exceptions: tuple = (Exception,)
 ) -> Callable:
     """
-    Function'ı exception durumunda retry eden decorator.
+    Retries function execution on specified exceptions.
     
     Args:
-        max_retries: Maksimum retry sayısı
-        delay: İlk retry delay'i
-        backoff_factor: Delay çarpanı
-        exceptions: Retry edilecek exception'lar
+        max_retries: Maximum retry attempts
+        delay: Initial delay between retries
+        backoff_factor: Factor by which the delay should be multiplied
+        exceptions: Exceptions that trigger a retry
         
     Returns:
-        Decorator function
-        
-    Example:
-        @retry_on_exception(max_retries=3, delay=1.0)
-        def risky_function():
-            # Risky operation
-            pass
+        A decorator function
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -390,18 +378,13 @@ def retry_on_exception(
 
 def timing_decorator(func: Callable) -> Callable:
     """
-    Function execution time'ını log eden decorator.
+    Logs function execution time.
     
     Args:
-        func: Timing'i ölçülecek function
+        func: Function to measure timing for
         
     Returns:
         Wrapped function
-        
-    Example:
-        @timing_decorator
-        def slow_function():
-            time.sleep(1)
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -425,31 +408,23 @@ def timing_decorator(func: Callable) -> Callable:
 
 def get_utc_timestamp() -> str:
     """
-    UTC timestamp string döndürür.
+    Returns UTC timestamp string in ISO format.
     
     Returns:
         UTC timestamp (ISO format)
-        
-    Example:
-        >>> get_utc_timestamp()
-        '2023-12-07T15:30:45.123456Z'
     """
     return datetime.now(timezone.utc).isoformat()
 
 
 def parse_iso_datetime(iso_string: str) -> datetime:
     """
-    ISO format datetime string'i parse eder.
+    Parses ISO format datetime string.
     
     Args:
         iso_string: ISO format datetime string
         
     Returns:
-        datetime objesi
-        
-    Example:
-        >>> parse_iso_datetime('2023-12-07T15:30:45Z')
-        datetime.datetime(2023, 12, 7, 15, 30, 45, tzinfo=datetime.timezone.utc)
+        datetime object
     """
     # Farklı ISO format'larını destekle
     formats = [

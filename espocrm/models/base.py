@@ -1,7 +1,7 @@
-"""EspoCRM API modelleri için base sınıflar.
+"""EspoCRM API base models.
 
-Bu modül EspoCRM API modellerinin temel sınıflarını içerir.
-Pydantic BaseModel'den türetilmiş ortak davranışları sağlar.
+This module contains base classes for EspoCRM API models.
+Provides common behaviors derived from Pydantic BaseModel.
 """
 
 import os
@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
+
 from typing_extensions import Self
 
 
@@ -18,19 +19,19 @@ ModelType = TypeVar("ModelType", bound="EspoCRMBaseModel")
 
 
 class EspoCRMBaseModel(BaseModel):
-    """EspoCRM API modelleri için temel sınıf.
+    """Base class for EspoCRM API models.
     
-    Bu sınıf tüm EspoCRM model sınıflarının base'idir.
-    Ortak field'lar, validation kuralları ve utility metodları sağlar.
+    This class serves as the base for all EspoCRM model classes.
+    Provides common fields, validation rules and utility methods.
     
     Attributes:
-        id: Kayıt ID'si (EspoCRM'de genellikle UUID formatında)
-        name: Kayıt adı (çoğu entity'de mevcut)
-        created_at: Oluşturulma tarihi
-        modified_at: Son değişiklik tarihi
-        created_by_id: Oluşturan kullanıcı ID'si
-        modified_by_id: Son değiştiren kullanıcı ID'si
-        deleted: Soft delete flag'i
+        id: Record ID (usually UUID format in EspoCRM)
+        name: Record name (present in most entities)
+        created_at: Creation date
+        modified_at: Last modification date
+        created_by_id: Creator user ID
+        modified_by_id: Last modifier user ID
+        deleted: Soft delete flag
     """
     
     # Temel field'lar - çoğu EspoCRM entity'sinde mevcut
@@ -119,24 +120,24 @@ class EspoCRMBaseModel(BaseModel):
         return value.isoformat()
     
     def is_new(self) -> bool:
-        """Kaydın yeni olup olmadığını kontrol eder (ID'si yoksa yeni)."""
+        """Check if the record is new (if it has no ID)."""
         return self.id is None
     
     def is_deleted(self) -> bool:
-        """Kaydın silinmiş olup olmadığını kontrol eder."""
+        """Check if the record is marked deleted."""
         return bool(self.deleted)
     
     def get_entity_type(self) -> str:
-        """Model'in EspoCRM entity type'ını döndürür.
+        """Return the EspoCRM entity type of the model.
         
-        Default olarak sınıf adını döndürür, alt sınıflar override edebilir.
+        Defaults to the class name, subclasses can override.
         """
         return self.__class__.__name__
     
     def get_display_name(self) -> str:
-        """Kaydın görüntüleme adını döndürür.
+        """Return display name of the record.
         
-        Önce 'name' field'ını, yoksa ID'yi, o da yoksa sınıf adını döndürür.
+        Returns the 'name' field, if not available then ID, or else class name.
         """
         if self.name:
             return self.name
@@ -146,14 +147,14 @@ class EspoCRMBaseModel(BaseModel):
             return f"New {self.get_entity_type()}"
     
     def to_dict(self, exclude_none: bool = True, by_alias: bool = True) -> Dict[str, Any]:
-        """Model'i dictionary'ye çevirir.
+        """Convert model to dictionary.
         
         Args:
-            exclude_none: None değerleri hariç tut
-            by_alias: Field alias'larını kullan
+            exclude_none: Exclude None values
+            by_alias: Use field aliases
             
         Returns:
-            Model dictionary'si
+            Model dictionary
         """
         return self.model_dump(
             exclude_none=exclude_none,
@@ -161,11 +162,11 @@ class EspoCRMBaseModel(BaseModel):
         )
     
     def to_json(self, exclude_none: bool = True, by_alias: bool = True) -> str:
-        """Model'i JSON string'e çevirir.
+        """Convert model to JSON string.
         
         Args:
-            exclude_none: None değerleri hariç tut
-            by_alias: Field alias'larını kullan
+            exclude_none: Exclude None values
+            by_alias: Use field aliases
             
         Returns:
             JSON string
@@ -230,7 +231,7 @@ class EspoCRMBaseModel(BaseModel):
             if value is None:
                 continue
             
-            # Datetime string'lerini parse et
+            # Parse datetime strings
             if key in ("createdAt", "modifiedAt", "created_at", "modified_at"):
                 if isinstance(value, str):
                     try:
@@ -238,6 +239,7 @@ class EspoCRMBaseModel(BaseModel):
                         cleaned[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
                         continue
                     except ValueError:
+                        # If parsing fails, keep the original string value
                         pass
             
             cleaned[key] = value

@@ -450,6 +450,7 @@ class TestCRUDClientValidation:
 class TestCRUDClientIntegration:
     """CRUD Client integration testleri."""
     
+    @pytest.mark.parametrize("mock_http_responses", [{"metadata": False}], indirect=True)
     def test_full_crud_workflow(self, real_client, mock_http_responses):
         """Full CRUD workflow integration testi."""
         crud_client = CrudClient(real_client)

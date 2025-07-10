@@ -12,7 +12,7 @@ from .api_key import ApiKeyAuthentication, APIKeyAuth
 from .hmac import HMACAuthentication, HMACAuth
 from .basic import BasicAuthentication, BasicAuth
 
-from typing import Union, Optional
+from typing import Union, Optional, List, Any
 
 __all__ = [
     # Base classes
@@ -34,6 +34,7 @@ __all__ = [
     "create_hmac_auth",
     "create_basic_auth",
     "create_espo_auth",
+    "quick_auth",
 ]
 
 # Type alias for all authentication types
@@ -79,8 +80,8 @@ def create_hmac_auth(api_key: str, secret_key: str) -> HMACAuthentication:
 
 def create_basic_auth(
     username: str, 
-    password: str = None, 
-    token: str = None
+    password: Optional[str] = None, 
+    token: Optional[str] = None
 ) -> BasicAuthentication:
     """
     Standart Basic authentication oluşturur.
@@ -108,8 +109,8 @@ def create_basic_auth(
 
 def create_espo_auth(
     username: str, 
-    password: str = None, 
-    token: str = None
+    password: Optional[str] = None, 
+    token: Optional[str] = None
 ) -> BasicAuthentication:
     """
     Espo-Authorization header ile Basic authentication oluşturur.
@@ -177,7 +178,7 @@ def validate_auth(auth: Optional[AuthenticationType]) -> bool:
     return auth.validate_credentials()
 
 
-def get_supported_auth_types() -> list[str]:
+def get_supported_auth_types() -> List[str]:
     """
     Desteklenen authentication tiplerinin listesini döndürür.
     
@@ -195,7 +196,7 @@ def get_supported_auth_types() -> list[str]:
 # Convenience function for quick authentication setup
 def quick_auth(
     auth_type: str,
-    **kwargs
+    **kwargs: Any
 ) -> AuthenticationType:
     """
     Hızlı authentication setup için convenience fonksiyon.

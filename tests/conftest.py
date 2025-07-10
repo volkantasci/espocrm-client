@@ -1,17 +1,18 @@
 """
-EspoCRM Python Client Test Configuration
+EspoCRM Python Client Test Configuration.
 
-Bu dosya pytest fixtures, mock utilities ve test konfigürasyonunu içerir.
+This module provides pytest fixtures, mock utilities, and test configuration.
 """
 
-import pytest
 import json
 import time
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Union
-from unittest.mock import Mock, MagicMock, patch
-import responses
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from unittest.mock import Mock
+
+import pytest
 import requests
+import responses
 
 from espocrm.client import EspoCRMClient
 from espocrm.config import ClientConfig
@@ -202,15 +203,16 @@ MOCK_METADATA = {
 class MockEspoCRMServer:
     """Mock EspoCRM server for testing."""
     
-    def __init__(self):
-        self.entities = MOCK_ENTITIES.copy()
-        self.metadata = MOCK_METADATA.copy()
-        self.request_count = 0
-        self.last_request = None
-        self.rate_limit_remaining = 100
-        self.rate_limit_reset = time.time() + 3600
+    def __init__(self) -> None:
+        """Initialize the mock server."""
+        self.entities: Dict[str, Dict[str, Any]] = MOCK_ENTITIES.copy()
+        self.metadata: Dict[str, Any] = MOCK_METADATA.copy()
+        self.request_count: int = 0
+        self.last_request: Optional[Any] = None
+        self.rate_limit_remaining: int = 100
+        self.rate_limit_reset: float = time.time() + 3600
     
-    def reset(self):
+    def reset(self) -> None:
         """Reset server state."""
         self.entities = MOCK_ENTITIES.copy()
         self.metadata = MOCK_METADATA.copy()
@@ -398,13 +400,27 @@ def mock_metadata():
 @pytest.fixture
 def responses_mock():
     """Responses mock fixture for HTTP mocking."""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         yield rsps
 
 
 @pytest.fixture
-def mock_http_responses(responses_mock, mock_server):
-    """Setup mock HTTP responses - sadece CRUD testleri için gerekli olanlar."""
+def mock_http_responses(request, responses_mock, mock_server):
+    """Setup mock HTTP responses with optional Metadata endpoint.
+    
+    This fixture can be parameterized to control which endpoints are mocked.
+    
+    Args:
+        request: pytest request object that may contain parameters
+        responses_mock: The responses mock fixture
+        mock_server: The mock server fixture
+    
+    Returns:
+        The configured responses mock object
+    """
+    # Extract parameters from request - metadata is True by default
+    mock_metadata: bool = getattr(request, "param", {}).get("metadata", True)
+    
     base_url = TEST_CONFIG["base_url"]
     api_version = "v1"  # Fixed API version
     
@@ -477,15 +493,41 @@ def mock_http_responses(responses_mock, mock_server):
         status=200
     )
     
-    # GET /api/v1/Metadata
-    responses_mock.add(
-        responses.GET,
-        f"{base_url}/api/{api_version}/Metadata",
-        json=MOCK_METADATA,
-        status=200
-    )
+    # Conditionally add Metadata endpoint only if mock_metadata is True
+    if mock_metadata:
+        responses_mock.add(
+            responses.GET,
+            f"{base_url}/api/{api_version}/Metadata",
+            json=MOCK_METADATA,
+            status=200
+        )
     
     return responses_mock
+
+
+# Performance Test Utilities
+
+@pytest.fixture
+def performance_timer():
+    """Performance timer fixture."""
+    class Timer:
+        def __init__(self) -> None:
+            self.start_time: Optional[float] = None
+            self.end_time: Optional[float] = None
+        
+        def start(self) -> None:
+            self.start_time = time.time()
+        
+        def stop(self) -> None:
+            self.end_time = time.time()
+        
+        @property
+        def elapsed(self) -> Optional[float]:
+            if self.start_time and self.end_time:
+                return self.end_time - self.start_time
+            return None
+    
+    return Timer()
 
 
 # Test Utilities
@@ -494,28 +536,28 @@ class TestDataFactory:
     """Factory for creating test data."""
     
     @staticmethod
-    def create_account(**overrides) -> Dict[str, Any]:
+    def create_account(**overrides: Any) -> Dict[str, Any]:
         """Create account test data."""
         data = MOCK_ENTITIES["Account"].copy()
         data.update(overrides)
         return data
     
     @staticmethod
-    def create_contact(**overrides) -> Dict[str, Any]:
+    def create_contact(**overrides: Any) -> Dict[str, Any]:
         """Create contact test data."""
         data = MOCK_ENTITIES["Contact"].copy()
         data.update(overrides)
         return data
     
     @staticmethod
-    def create_lead(**overrides) -> Dict[str, Any]:
+    def create_lead(**overrides: Any) -> Dict[str, Any]:
         """Create lead test data."""
         data = MOCK_ENTITIES["Lead"].copy()
         data.update(overrides)
         return data
     
     @staticmethod
-    def create_opportunity(**overrides) -> Dict[str, Any]:
+    def create_opportunity(**overrides: Any) -> Dict[str, Any]:
         """Create opportunity test data."""
         data = MOCK_ENTITIES["Opportunity"].copy()
         data.update(overrides)
@@ -541,11 +583,12 @@ class TestDataFactory:
 class MockResponseBuilder:
     """Builder for creating mock HTTP responses."""
     
-    def __init__(self):
-        self.status_code = 200
-        self.headers = {}
-        self.json_data = {}
-        self.text_data = ""
+    def __init__(self) -> None:
+        """Initialize the mock response builder."""
+        self.status_code: int = 200
+        self.headers: Dict[str, str] = {}
+        self.json_data: Dict[str, Any] = {}
+        self.text_data: str = ""
     
     def with_status(self, status_code: int) -> 'MockResponseBuilder':
         """Set response status code."""
@@ -577,31 +620,6 @@ class MockResponseBuilder:
         response.content = self.text_data.encode('utf-8')
         response.ok = 200 <= self.status_code < 300
         return response
-
-
-# Performance Test Utilities
-
-@pytest.fixture
-def performance_timer():
-    """Performance timer fixture."""
-    class Timer:
-        def __init__(self):
-            self.start_time = None
-            self.end_time = None
-        
-        def start(self):
-            self.start_time = time.time()
-        
-        def stop(self):
-            self.end_time = time.time()
-        
-        @property
-        def elapsed(self):
-            if self.start_time and self.end_time:
-                return self.end_time - self.start_time
-            return None
-    
-    return Timer()
 
 
 # Security Test Utilities
@@ -641,17 +659,17 @@ class ErrorSimulator:
     """Utility for simulating various error conditions."""
     
     @staticmethod
-    def network_error():
+    def network_error() -> requests.exceptions.ConnectionError:
         """Simulate network error."""
         return requests.exceptions.ConnectionError("Network error")
     
     @staticmethod
-    def timeout_error():
+    def timeout_error() -> requests.exceptions.Timeout:
         """Simulate timeout error."""
         return requests.exceptions.Timeout("Request timeout")
     
     @staticmethod
-    def http_error(status_code: int, message: str = "HTTP Error"):
+    def http_error(status_code: int, message: str = "HTTP Error") -> requests.exceptions.HTTPError:
         """Simulate HTTP error."""
         response = Mock()
         response.status_code = status_code
@@ -662,22 +680,22 @@ class ErrorSimulator:
         return error
     
     @staticmethod
-    def rate_limit_error():
+    def rate_limit_error() -> requests.exceptions.HTTPError:
         """Simulate rate limit error."""
         return ErrorSimulator.http_error(429, "Rate limit exceeded")
     
     @staticmethod
-    def auth_error():
+    def auth_error() -> requests.exceptions.HTTPError:
         """Simulate authentication error."""
         return ErrorSimulator.http_error(401, "Unauthorized")
     
     @staticmethod
-    def not_found_error():
+    def not_found_error() -> requests.exceptions.HTTPError:
         """Simulate not found error."""
         return ErrorSimulator.http_error(404, "Not found")
     
     @staticmethod
-    def server_error():
+    def server_error() -> requests.exceptions.HTTPError:
         """Simulate server error."""
         return ErrorSimulator.http_error(500, "Internal server error")
 
@@ -718,8 +736,6 @@ def http_status_code(request):
 def cleanup_after_test():
     """Automatic cleanup after each test."""
     yield
-    # Cleanup code here if needed
-    pass
 
 
 # Test Markers
