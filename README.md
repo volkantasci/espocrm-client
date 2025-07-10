@@ -221,6 +221,82 @@ logger.info(
 )
 ```
 
+## 🧪 Test Fixtures
+
+The following are examples of how to use the test fixtures provided within the testing suite:
+
+### Mock Server
+
+```python
+import pytest
+
+def test_example(mock_server):
+    # Use mock server to simulate HTTP responses
+    mock_server.reset()  # Reset server state
+```
+
+### Test Data
+
+```python
+import pytest
+
+def test_example(sample_account, sample_contact):
+    # Use ready-made test entities
+    assert sample_account.get("name") == "Test Company"
+```
+
+### Authentication Fixtures
+
+```python
+import pytest
+
+def test_example(api_key_auth, hmac_auth, basic_auth):
+    # Test different authentication methods
+```
+
+### Performance Testing
+
+```python
+import pytest
+
+def test_example(performance_timer):
+    performance_timer.start()
+    # Test code
+    performance_timer.stop()
+    assert performance_timer.elapsed < 1.0
+```
+
+### HTTP Mocking
+
+```python
+import pytest
+import responses
+
+@responses.activate
+
+def test_http_request():
+    responses.add(
+        responses.GET,
+        "https://test.espocrm.com/api/v1/Account/123",
+        json={"id": "123", "name": "Test"},
+        status=200
+    )
+```
+
+### Error Simulation
+
+```python
+import pytest
+
+def test_error_handling(error_simulator):
+    # Network error
+    error_simulator.network_error()
+    # HTTP error
+    error_simulator.http_error(404, "Not Found")
+    # Rate limit error
+    error_simulator.rate_limit_error()
+```
+
 ## 🧪 Test
 
 ```bash
